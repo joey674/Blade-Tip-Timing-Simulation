@@ -9,8 +9,8 @@ method = "default_as_non";
 % method = "halfpower_bandwidth_method";
 method = "halfpower_bandwidth_method_third_correction";
 
-plot_struct = "default_as_all";
-% plot_struct = "debug_mode_show_first";
+% plot_struct = "default_as_all";
+plot_struct = "debug_mode_show_first";
 % plot_struct = "debug_mode_show_four";
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -93,7 +93,7 @@ if(method == "halfpower_bandwidth_method")
         Magn_each_blade = magn_i;
         freq_each_blade = freq_i;
         %smooth data
-        Magn_each_blade = smoothdata(Magn_each_blade,'loess');     
+        Magn_each_blade = smoothdata(Magn_each_blade,'loess',1000);     
         % find peaks
         [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',10);  
         %re-smooth data
@@ -193,7 +193,7 @@ if(method == "halfpower_bandwidth_method_third_correction")
         % Convert to acceleration response function%%%%%%%%%%%%%%%%%%%%%%
         Magn_each_blade = (freq_each_blade).^2 .* Magn_each_blade;
         %smooth data
-        Magn_each_blade = smoothdata(Magn_each_blade,'loess');     
+        Magn_each_blade = smoothdata(Magn_each_blade,'loess',1000);     
         % find peaks
         [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',1500000000);  
         % re-smooth data
