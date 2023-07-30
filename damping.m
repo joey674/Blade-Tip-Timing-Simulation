@@ -9,17 +9,10 @@ load_data_form = "single_EO";
 pre_process = "re_order_amplitude";
 % pre_process = "smooth_rotating_speed";
 
-method = "non";
-method = "halfpower_bandwidth_method";
-% method = "halfpower_bandwidth_method_third_correction";
+% method = "halfpower_bandwidth_method";
+method = "halfpower_bandwidth_method_third_correction";
 % method = "single_degree_of_freedom_approximation";
 
-% plot_struct = "one";
-plot_struct = "four";
-% plot_struct = "all";
-
-data_output = "together";
-% data_output = "seperate";
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('[**********damping ratio calculation start.**********]\n');
@@ -82,24 +75,12 @@ end
 
 %% calculate damping ratios(halfpower_bandwidth_method)
 if(method == "halfpower_bandwidth_method")    
-    figure('units','normalized','outerposition',[0 0 1 1]);
-    if (plot_struct == "all")    
-        n_cols = 2;
-        n_rows = ceil(n_blades / n_cols);
-        num_blades = n_blades;
-    end
-    if (plot_struct == "one") 
-         n_cols = 1;
-         n_rows = 1;
-         num_blades = 1;
-    end    
-    if (plot_struct == "four") 
-         n_cols = 2;
-         n_rows = ceil(4 / n_cols);
-         num_blades = 4;
-    end    
-    for i = 1:num_blades  
-        subplot(n_rows, n_cols, i);
+    n_cols = 2;
+    n_rows = ceil(n_blades / n_cols);
+    num_blades = n_blades;
+    colors = jet(num_blades);  
+    for i = 1:num_blades
+        figure('units','normalized','outerposition',[0 0 1 1]);
         % get magn and freq for each blade
         blade_data = blade{i};
         freq_i = [blade_data.freq];
@@ -113,11 +94,9 @@ if(method == "halfpower_bandwidth_method")
         Magn_each_blade = magn_i;
         freq_each_blade = freq_i;
         %smooth data
-        Magn_each_blade = smoothdata(Magn_each_blade,'loess',1000);     
+        Magn_each_blade = smoothdata(Magn_each_blade,'loess',1000);%%%%%%%%%%%%%%%%%     
         % find peaks
-        [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',10);  
-        %re-smooth data
-        % Magn_each_blade = damping_re_smooth(Magn_each_blade,locs);
+        [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',10); %%%%%%%%%%%%%%%% 
         % plot smoothed magn
         plot(freq_i, Magn_each_blade, 'LineWidth', 2, 'Color', 'r');
         hold on;
@@ -136,41 +115,37 @@ if(method == "halfpower_bandwidth_method")
             end
             % calculate damping ratio
             damping_ratio(j) = (f2 - f1) / (2 * freq_each_blade(locs(j)));
-            % plot peaks
-            plot([freq_each_blade(locs(j)), freq_each_blade(locs(j))], [min(magn_i), max(magn_i)], 'r-');
+            % plot peaks with different colors and mark peak index
+            plot(freq_each_blade(locs(j)), pks(j), 'p', 'MarkerSize', 12, 'Color', colors(j, :));
+            text(freq_each_blade(locs(j)), pks(j), ['Peak ', num2str(j)], 'Color', colors(j, :));
+            % plot half power points
+            plot(f1, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
+            plot(f2, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
         end
         % plot damping ratio
         yyaxis right;
-        plot(freq_each_blade(locs), damping_ratio, 'o');
+        plot(freq_each_blade(locs), damping_ratio, 'o', 'MarkerSize', 12);
+        text(freq_each_blade(locs), damping_ratio, ['DR', num2str(j)]);
         ylabel('Damping Ratio');
         % store calculated damping ratio of all peaks for one blade 
         damping_ratios{i} = damping_ratio;
         title(['Blade ', num2str(i)]);
+        hold off;
+        % save file
+        saveas(gcf, fullfile('..', 'DampingRatio', ['Blade_', num2str(i), '_HPBWM','.png']));
+        close(gcf); 
     end        
-    hold off;
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% calculate damping ratios(halfpower_bandwith_method_third_correction)
 if(method == "halfpower_bandwidth_method_third_correction")
-    figure('units','normalized','outerposition',[0 0 1 1]);
-    if (plot_struct == "all")    
-        n_cols = 2;
-        n_rows = ceil(n_blades / n_cols);
-        num_blades = n_blades;
-    end
-    if (plot_struct == "one") 
-         n_cols = 1;
-         n_rows = 1;
-         num_blades = 1;
-    end    
-    if (plot_struct == "four") 
-         n_cols = 2;
-         n_rows = ceil(4 / n_cols);
-         num_blades = 4;
-    end    
+    n_cols = 2;
+    n_rows = ceil(n_blades / n_cols);
+    num_blades = n_blades; 
+    colors = jet(num_blades);  
     for i = 1:num_blades  
-        subplot(n_rows, n_cols, i);
+        figure('units','normalized','outerposition',[0 0 1 1]);      
         % get magn and freq for each blade
         blade_data = blade{i};
         freq_i = [blade_data.freq];
@@ -183,14 +158,12 @@ if(method == "halfpower_bandwidth_method_third_correction")
         % calculate damping ratio for each blade    
         Magn_each_blade = magn_i;
         freq_each_blade = freq_i;
-        % Convert to acceleration response function%%%%%%%%%%%%%%%%%%%%%%
+        % Convert to acceleration response function
         Magn_each_blade = (freq_each_blade).^2 .* Magn_each_blade;
         %smooth data
-        Magn_each_blade = smoothdata(Magn_each_blade,'loess',100);     
+        Magn_each_blade = smoothdata(Magn_each_blade,'loess',1000); %%%%%%%%%%%%%%    
         % find peaks
-        [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',1500000000);  
-        % re-smooth data
-        % Magn_each_blade = damping_re_smooth(Magn_each_blade,locs);
+        [pks,locs] = findpeaks(Magn_each_blade,'MinPeakProminence',1500000000);%%%%%%%%%%%%%   
         % plot smoothed magn
         plot(freq_i, Magn_each_blade, 'LineWidth', 2, 'Color', 'r');
         hold on;
@@ -207,21 +180,29 @@ if(method == "halfpower_bandwidth_method_third_correction")
             if isempty(f2)
                 f2 = freq_each_blade(end);
             end
-            % calculate damping ratio%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % calculate damping ratio
             sol = roots([8,0,2,(f1 - f2) / freq_each_blade(locs(j))]); 
             damping_ratio(j) = sol(imag(sol) == 0 & sol >= 0 & sol <= 1);
-            % plot peaks
-            plot([freq_each_blade(locs(j)), freq_each_blade(locs(j))], [min(Magn_each_blade), max(Magn_each_blade)], 'r-');
+            % plot peaks with different colors and mark peak index
+            plot(freq_each_blade(locs(j)), pks(j), 'p', 'MarkerSize', 12, 'Color', colors(j, :));
+            text(freq_each_blade(locs(j)), pks(j), ['Peak ', num2str(j)], 'Color', colors(j, :));
+            % plot half power points
+            plot(f1, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
+            plot(f2, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
         end
         % plot damping ratio
         yyaxis right;
-        plot(freq_each_blade(locs), damping_ratio, 'o');
+        plot(freq_each_blade(locs), damping_ratio, 'o', 'MarkerSize', 12);
+        text(freq_each_blade(locs), damping_ratio, ['DR', num2str(j)]);
         ylabel('Damping Ratio');
         % store calculated damping ratio of all peaks for one blade 
         damping_ratios{i} = damping_ratio;
         title(['Blade ', num2str(i)]);
+         hold off;
+        % save file
+        saveas(gcf, fullfile('..', 'DampingRatio', ['Blade_', num2str(i),'_HPBWM3C', '.png']));
+        close(gcf); 
     end        
-    hold off;
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
