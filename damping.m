@@ -6,13 +6,12 @@ EO = 24;
 load_data_form = "single_EO";
 % load_data_form = "multi_EO";
 
-pre_process = "re_order_amplitude";
-% pre_process = "smooth_rotating_speed";
+% pre_process = "re_order_amplitude";
+pre_process = "smooth_rotating_speed";
 
 % method = "halfpower_bandwidth_method";
 method = "halfpower_bandwidth_method_third_correction";
 % method = "single_degree_of_freedom_approximation";
-
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('[**********damping ratio calculation start.**********]\n');
@@ -68,8 +67,22 @@ if(pre_process == "re_order_amplitude")
     end
 end
 if(pre_process == "smooth_rotating_speed")
-
-
+    blade = cell(1, n_blades);   
+    for i = 1:n_blades
+        % Remove NaNs from excite_freq
+        valid_indices = ~isnan(excite_freq);
+        magn_i = Magn{i}(valid_indices);
+        freq_i = excite_freq(valid_indices);        
+        % Find the shorter length
+        len = min(length(magn_i), length(freq_i));        
+        % Cut down magn_i and freq_i
+        magn_i = magn_i(1:len);
+        freq_i = freq_i(1:len);        
+        % Sort freq_i
+        [freq_i, idx_sort] = sort(freq_i);    
+        % Assign magn_i and sorted freq_i to the structure
+        blade{i} = struct('freq', num2cell(freq_i), 'magn', num2cell(magn_i));
+    end
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -120,12 +133,15 @@ if(method == "halfpower_bandwidth_method")
             text(freq_each_blade(locs(j)), pks(j), ['Peak ', num2str(j)], 'Color', colors(j, :));
             % plot half power points
             plot(f1, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
-            plot(f2, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');
+            plot(f2, pks(j)/sqrt(2), 'x', 'MarkerSize', 12, 'Color', 'g');          
         end
         % plot damping ratio
         yyaxis right;
         plot(freq_each_blade(locs), damping_ratio, 'o', 'MarkerSize', 12);
-        text(freq_each_blade(locs), damping_ratio, ['DR', num2str(j)]);
+        % Add damping ratio and corresponding freq value with loop
+        for j = 1:length(damping_ratio)
+            text(freq_each_blade(locs(j)), damping_ratio(j), ['DR: ', num2str(damping_ratio(j)), newline, 'Freq: ', num2str(freq_each_blade(locs(j)))], 'Color', colors(j, :));
+        end
         ylabel('Damping Ratio');
         % store calculated damping ratio of all peaks for one blade 
         damping_ratios{i} = damping_ratio;
@@ -193,7 +209,10 @@ if(method == "halfpower_bandwidth_method_third_correction")
         % plot damping ratio
         yyaxis right;
         plot(freq_each_blade(locs), damping_ratio, 'o', 'MarkerSize', 12);
-        text(freq_each_blade(locs), damping_ratio, ['DR', num2str(j)]);
+        % Add damping ratio and corresponding freq value with loop
+        for j = 1:length(damping_ratio)
+            text(freq_each_blade(locs(j)), damping_ratio(j), ['DR: ', num2str(damping_ratio(j)), newline, 'Freq: ', num2str(freq_each_blade(locs(j)))], 'Color', colors(j, :));
+        end
         ylabel('Damping Ratio');
         % store calculated damping ratio of all peaks for one blade 
         damping_ratios{i} = damping_ratio;
