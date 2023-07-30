@@ -14,12 +14,12 @@ method = "halfpower_bandwidth_method";
 % method = "halfpower_bandwidth_method_third_correction";
 % method = "single_degree_of_freedom_approximation";
 
-plot_struct = "one";
+% plot_struct = "one";
 plot_struct = "four";
 % plot_struct = "all";
 
-data_output = "together"
-% data_output = "seperate"
+data_output = "together";
+% data_output = "seperate";
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('[**********damping ratio calculation start.**********]\n');
