@@ -9,8 +9,8 @@ load_data_form = "single_EO";
 % pre_process = "re_order_amplitude";
 pre_process = "smooth_rotating_speed";
 
-% method = "halfpower_bandwidth_method";
-method = "halfpower_bandwidth_method_third_correction";
+method = "halfpower_bandwidth_method";
+% method = "halfpower_bandwidth_method_third_correction";
 % method = "single_degree_of_freedom_approximation";
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -227,59 +227,37 @@ end
 
 %% calculate damping ratios(single_degree_of_freedom_approximation)
 if(method == "single_degree_of_freedom_approximation")    
-    figure('units','normalized','outerposition',[0 0 1 1]);
-    if (plot_struct == "all")    
-        n_cols = 2;
-        n_rows = ceil(n_blades / n_cols);
-        num_blades = n_blades;
-    end
-    if (plot_struct == "one") 
-         n_cols = 1;
-         n_rows = 1;
-         num_blades = 1;
-    end    
-    if (plot_struct == "four") 
-         n_cols = 2;
-         n_rows = ceil(4 / n_cols);
-         num_blades = 4;
-    end    
-    for i = 1:num_blades  
-        subplot(n_rows, n_cols, i);
+    n_cols = 2;
+    n_rows = ceil(n_blades / n_cols);
+    num_blades = n_blades;
+    colors = jet(num_blades);  
+    for i = 1:num_blades
+        figure('units','normalized','outerposition',[0 0 1 1]);
         % get magn and freq for each blade
         blade_data = blade{i};
         freq_i = [blade_data.freq];
-        magn_i = [blade_data.magn];        
+        magn_i = [blade_data.magn]; 
         % plot origin diagram 
         yyaxis left;
         plot(freq_i, magn_i);
         ylabel('Magnitude');
-        hold on;             
+        hold on;     
         % calculate damping ratio for each blade    
         Magn_each_blade = magn_i;
         freq_each_blade = freq_i;
-        %find peaks(but not using smooth data)
-        Magn_each_blade_smooth = smoothdata(Magn_each_blade,'loess',1000);           
-        [pks,locs] = findpeaks(Magn_each_blade_smooth,'MinPeakProminence',10);  
-
-        % deal each peak    
-        damping_ratio = zeros(size(pks));
-        for j = 1:length(pks)
-            
     
 
+        % 把MDOF数据模型分解成多个SDOF模型
+       
 
+
+        % 处理每个SDOF模型
             
-        end
-
-        % plot damping ratio
-        yyaxis right;
-        plot(freq_each_blade(locs), damping_ratio, 'o');
-        ylabel('Damping Ratio');
-        % store calculated damping ratio of all peaks for one blade 
+        % store calculated damping ratio of all S-model for one blade 
         damping_ratios{i} = damping_ratio;
         title(['Blade ', num2str(i)]);
+        hold off;
     end        
-    hold off;
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
