@@ -9,9 +9,9 @@ load_data_form = "single_EO";
 % pre_process = "re_order_amplitude";
 pre_process = "smooth_rotating_speed";
 
-method = "halfpower_bandwidth_method";
+% method = "halfpower_bandwidth_method";
 % method = "halfpower_bandwidth_method_third_correction";
-% method = "single_degree_of_freedom_approximation";
+method = "single_degree_of_freedom_approximation";
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('[**********damping ratio calculation start.**********]\n');
@@ -233,30 +233,41 @@ if(method == "single_degree_of_freedom_approximation")
     colors = jet(num_blades);  
     for i = 1:num_blades
         figure('units','normalized','outerposition',[0 0 1 1]);
-        % get magn and freq for each blade
+        % get magn and freq for each blade/plot origin 
         blade_data = blade{i};
         freq_i = [blade_data.freq];
         magn_i = [blade_data.magn]; 
-        % plot origin diagram 
         yyaxis left;
         plot(freq_i, magn_i);
         ylabel('Magnitude');
-        hold on;     
-        % calculate damping ratio for each blade    
+        hold on;   
         Magn_each_blade = magn_i;
         freq_each_blade = freq_i;
-    
 
-        % 把MDOF数据模型分解成多个SDOF模型
-       
+        %smooth data to find peak and trough 
+        Magn_smoothed = smoothdata(Magn_each_blade,'loess',1000);
+        [peaks,peaks_locs] = findpeaks(Magn_smoothed,'MinPeakProminence',10); 
+        [troughs, trough_locs] = findpeaks(-Magn_smoothed,'MinPeakProminence',10);
+        troughs = -troughs;  
+
+        % 设定满足条件的拟合差值 
+        satisfied_error = 1;
+        
+        % 初始化空数组来存储每个波峰的最佳数据范围和误差
+        best_ranges = zeros(length(peaks_locs), 2);
+        best_errors = inf(length(peaks_locs), 1);
+        
+        % 处理每个波峰 会把得到的最佳数据集和拟合最好的误差返回出来.
+        % 但我这里其实还要返回阻尼比
+        for i = 1:length(peaks_locs)
+            [best_ranges(i, :), best_errors(i)] = fitSDOF(peaks_locs, trough_locs, i, Magn_each_blade, satisfied_error);
+        end
 
 
-        % 处理每个SDOF模型
-            
-        % store calculated damping ratio of all S-model for one blade 
-        damping_ratios{i} = damping_ratio;
-        title(['Blade ', num2str(i)]);
-        hold off;
+
+
+
+
     end        
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -272,7 +283,35 @@ function L = loss_function(p, w, Magn)
     H_model = sdof_response(w, p(1), p(2));
     L = sum((Magn - H_model).^2);
 end
-% include using function damping_re_smooth(Magn_each_blade,locs)
+function [best_range, best_error] = fitSDOF(peaks_locs, trough_locs, i, Magn_each_blade, satisfied_error)
+    % 初始化最佳范围和误差
+    best_range = [];
+    best_error = inf;    
+    % 初始化数据集范围 先从最近的左右波谷开始
+    left_trough = max(trough_locs(trough_locs < peaks_locs(i)));
+    right_trough = min(trough_locs(trough_locs > peaks_locs(i)));    
+    while true
+        % 使用当前的数据范围进行拟合
+        current_range = [left_trough, right_trough];   
+
+        %todo
+        current_error = 1; 
+        
+
+        % 如果当前误差小于best_error，更新best_error和best_range
+        if current_error < best_error
+            best_error = current_error;
+            best_range = current_range;
+        end
+         % 如果达到满足误差或遍历完所有波谷，跳出循环
+        if current_error <= satisfied_error || isempty(left_trough) && isempty(right_trough)
+            break;
+        end
+        % 扩大数据范围:选择当前谷的下一个谷,但是不会越过最近的波峰
+        left_trough = max(trough_locs(trough_locs < left_trough & (i == 1 || trough_locs > peaks_locs(i-1))));
+        right_trough = min(trough_locs(trough_locs > right_trough & (i == length(peaks_locs) || trough_locs < peaks_locs(i+1))));
+    end
+end    
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
