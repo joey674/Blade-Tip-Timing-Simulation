@@ -6,8 +6,8 @@ EO = 24;
 load_data_form = "single_EO";
 % load_data_form = "multi_EO";
 
-% pre_process = "re_order_amplitude";
-pre_process = "smooth_rotating_speed";
+pre_process = "re_order_amplitude";
+% pre_process = "smooth_rotating_speed";
 
 % method = "halfpower_bandwidth_method";
 % method = "halfpower_bandwidth_method_third_correction";
@@ -88,8 +88,6 @@ end
 
 %% calculate damping ratios(halfpower_bandwidth_method)
 if(method == "halfpower_bandwidth_method")    
-    n_cols = 2;
-    n_rows = ceil(n_blades / n_cols);
     num_blades = n_blades;
     colors = jet(num_blades);  
     for i = 1:num_blades
@@ -156,8 +154,6 @@ end
 
 %% calculate damping ratios(halfpower_bandwith_method_third_correction)
 if(method == "halfpower_bandwidth_method_third_correction")
-    n_cols = 2;
-    n_rows = ceil(n_blades / n_cols);
     num_blades = n_blades; 
     colors = jet(num_blades);  
     for i = 1:num_blades  
@@ -227,91 +223,145 @@ end
 
 %% calculate damping ratios(single_degree_of_freedom_approximation)
 if(method == "single_degree_of_freedom_approximation")    
-    n_cols = 2;
-    n_rows = ceil(n_blades / n_cols);
     num_blades = n_blades;
-    colors = jet(num_blades);  
-    for i = 1:num_blades
-        figure('units','normalized','outerposition',[0 0 1 1]);
-        % get magn and freq for each blade/plot origin 
-        blade_data = blade{i};
-        freq_i = [blade_data.freq];
-        magn_i = [blade_data.magn]; 
-        yyaxis left;
-        plot(freq_i, magn_i);
-        ylabel('Magnitude');
-        hold on;   
-        Magn_each_blade = magn_i;
-        freq_each_blade = freq_i;
 
-        %smooth data to find peak and trough 
-        Magn_smoothed = smoothdata(Magn_each_blade,'loess',1000);
+    % deal with each blade
+    for blade_idx = 1:num_blades
+        figure('units','normalized','outerposition',[0 0 0.7 0.7]);   
+        hold on;
+
+        % get blade data
+        blade_data = blade{blade_idx};
+        freq_each_blade = [blade_data.freq];
+        Magn_each_blade = [blade_data.magn]; 
+
+        % plot origin graph
+        plot(freq_each_blade, Magn_each_blade, 'k', 'DisplayName', 'Original Data');
+
+        % find peaks and troughs
+        Magn_smoothed = smoothdata(Magn_each_blade,'loess',100);
         [peaks,peaks_locs] = findpeaks(Magn_smoothed,'MinPeakProminence',10); 
-        [troughs, trough_locs] = findpeaks(-Magn_smoothed,'MinPeakProminence',10);
+        [troughs, trough_locs] = findpeaks(-Magn_smoothed,'MinPeakProminence',1);
         troughs = -troughs;  
+        % plot peaks and troughs
+        plot(freq_each_blade(peaks_locs), peaks, 'ro', 'DisplayName', 'Peaks');
+        plot(freq_each_blade(trough_locs), troughs, 'bo', 'DisplayName', 'Troughs');
+        legend;
+        xlabel('Frequency (Hz)');
+        ylabel('Magnitude');
 
-        % 设定满足条件的拟合差值 
-        satisfied_error = 1;
-        
-        % 初始化空数组来存储每个波峰的最佳数据范围和误差
+        % set satisfied approximate degree(let it be zero so never satisfied)
+        satisfied_error = 0;     
+
+        % init vector to store value
         best_ranges = zeros(length(peaks_locs), 2);
-        best_errors = inf(length(peaks_locs), 1);
-        
-        % 处理每个波峰 会把得到的最佳数据集和拟合最好的误差返回出来.
-        % 但我这里其实还要返回阻尼比
+        best_errors = inf(length(peaks_locs), 1);    
+
+        % deal every peaks
         for i = 1:length(peaks_locs)
-            [best_ranges(i, :), best_errors(i)] = fitSDOF(peaks_locs, trough_locs, i, Magn_each_blade, satisfied_error);
+            % init dataset to store best result
+            best_range = [];
+            best_error = inf;    
+
+            % choose first pair of troughs
+            left_trough = max(trough_locs(trough_locs < peaks_locs(i)));
+            right_trough = min(trough_locs(trough_locs > peaks_locs(i)));  
+            iteration = 0;
+            
+            % deal every pair of troughs
+            while true                                             
+                % init
+                current_range = [left_trough, right_trough];    
+                current_magn = Magn_smoothed(current_range(1):current_range(2));
+                % current_magn = Magn_each_blade(current_range(1):current_range(2));
+                current_freq = freq_each_blade(current_range(1):current_range(2));
+                w_n = freq_each_blade(peaks_locs(i));
+                w = current_freq;
+
+                % set value for fmincon
+                down_boundary = [0,0]; 
+                upper_boundary = [inf,0.1];
+                startvalue = [1/peaks(i),0.001];% 一个是激励因子的初始值,一个是阻尼比的初始值
+
+                % 开始拟合 得到这个范围下最佳的阻尼比 以及这个阻尼比对应的error(error
+                % 衡量这个最佳的阻尼比是否满足我们的需求)
+                % start to aproximate
+                options = optimoptions('fmincon', 'Display', 'iter');
+                optimal_params = fmincon(@(params) computeError(params, w, w_n, current_magn), ...
+                startvalue, [], [], [], [], down_boundary, upper_boundary, [], options);
+                A = optimal_params(1);
+                xi = optimal_params(2);
+                
+
+                % use DR that we get to calculate error              
+                X = A ./ sqrt((1 - (w / w_n) .^ 2) .^ 2 + (2 * xi * (w / w_n)) .^ 2);
+                current_error = computeError(optimal_params, w, w_n, current_magn);
+
+                % check if satisfied then break
+                if current_error < best_error
+                    best_error = current_error;
+                    best_range = current_range;   
+                    % plot graph
+                    fprintf("================\n");
+                    color_depth = max(0, 1 - iteration*0.2);
+                    plot(w, X, 'Color', [0, color_depth, 0], 'LineWidth',...
+                    1+iteration*0.5);
+                    fprintf("++++++++++++++++\n");
+                    if best_error <= satisfied_error 
+                        break;
+                    end
+                end  
+                iteration = iteration + 1;
+
+                % iterate troughs
+                if i == 1 
+                    valid_left_troughs = trough_locs(trough_locs < left_trough);
+                else 
+                    valid_left_troughs = trough_locs(trough_locs < left_trough & trough_locs > peaks_locs(i-1));
+                end
+                left_trough = max(valid_left_troughs);               
+                if i == length(peaks_locs) 
+                    valid_right_troughs = trough_locs(trough_locs > right_trough);
+                else 
+                    valid_right_troughs = trough_locs(trough_locs > right_trough & trough_locs < peaks_locs(i+1));
+                end
+                right_trough = min(valid_right_troughs);
+                % its the last trough,break
+                if isempty(left_trough) || isempty(right_trough)
+                    break;
+                end
+
+            end
+            % store result 
+            best_ranges(i, :) = best_range;
+            best_errors(i) = best_error;
+
         end
-
-
-
-
-
+        
+        % add plot info
+        legend;
+        title(['Blade ', num2str(blade_idx)]);
+        xlabel('Frequency');
+        ylabel('Magnitude');
+        hold off;
 
     end        
 end
+
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('[**********damping ratio calculation finish.*********]\n');
 
-%% used funcitons
-function H = sdof_response(w, w_n, xi)
-    H = 1 ./ sqrt((1 - (w / w_n).^2).^2 + (2 * xi * (w / w_n)).^2);
-end
-function L = loss_function(p, w, Magn)
-    % p(1) is natural frequency, p(2) is damping ratio
-    H_model = sdof_response(w, p(1), p(2));
-    L = sum((Magn - H_model).^2);
-end
-function [best_range, best_error] = fitSDOF(peaks_locs, trough_locs, i, Magn_each_blade, satisfied_error)
-    % 初始化最佳范围和误差
-    best_range = [];
-    best_error = inf;    
-    % 初始化数据集范围 先从最近的左右波谷开始
-    left_trough = max(trough_locs(trough_locs < peaks_locs(i)));
-    right_trough = min(trough_locs(trough_locs > peaks_locs(i)));    
-    while true
-        % 使用当前的数据范围进行拟合
-        current_range = [left_trough, right_trough];   
+%% funcitons for SDOF
+function error = computeError(params, w, w_n, Magn_each_blade)
+    A = params(1);
+    xi = params(2);
+    X = A ./ sqrt((1 - (w / w_n) .^ 2) .^ 2 + (2 * xi * (w / w_n)) .^ 2);
+    len =length(w);
+    % error = sum((Magn_each_blade - X) .^ 2)/len;
+    error = norm(Magn_each_blade - X)/sqrt(len);
+end 
 
-        %todo
-        current_error = 1; 
-        
-
-        % 如果当前误差小于best_error，更新best_error和best_range
-        if current_error < best_error
-            best_error = current_error;
-            best_range = current_range;
-        end
-         % 如果达到满足误差或遍历完所有波谷，跳出循环
-        if current_error <= satisfied_error || isempty(left_trough) && isempty(right_trough)
-            break;
-        end
-        % 扩大数据范围:选择当前谷的下一个谷,但是不会越过最近的波峰
-        left_trough = max(trough_locs(trough_locs < left_trough & (i == 1 || trough_locs > peaks_locs(i-1))));
-        right_trough = min(trough_locs(trough_locs > right_trough & (i == length(peaks_locs) || trough_locs < peaks_locs(i+1))));
-    end
-end    
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
