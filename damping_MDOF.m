@@ -35,7 +35,7 @@ blade = cell(1, n_blades);
 % find max length
 max_length = max([length(Freq), cellfun(@length, Magn)]);   
 for i = 1:n_blades
-    % Assign Magn{i} and Freq to the structure
+    % assign Magn{i} and Freq to the structure
     blade{i} = repmat(struct('freq', NaN, 'magn', NaN, 'err', NaN ), 1, max_length);       
     len_freq = length(Freq);
     len_magn = length(Magn{i});
@@ -48,22 +48,31 @@ for i = 1:n_blades
             blade{i}(j).err = Err{i}(j);
         end
     end    
-    % Sort the structure array by freq
+    % sort the structure array by freq
     [~, idx_sort] = sort([blade{i}.freq]);
     blade{i} = blade{i}(idx_sort);   
-    % Remove elements contain nan
+    % remove elements contain nan
     idx_remove = isnan([blade{i}.freq]) | isnan([blade{i}.magn]);                   
     blade{i}(idx_remove) = [];   
 end
 
 
+%% get peak intervals
+% peak_intervals = [13739, 13748; 13773, 13779; 13800, 13807; 13831, 13839];
+% peak_intervals = [1.374005e+04, 1.375005e+04; 1.377473e+04, 1.378473e+04; 1.380403e+04, 1.381403e+04; 1.383250e+04, 1.384250e+04];
+peak_intervals = find_peak_intervals(n_blades,n_modes,blade);
+fprintf('%d ',peak_intervals);
+fprintf('\n');
+
+
 %% start algorithm
 ignored_ratio_max = 0.3;
 ignored_ratio_step = 0.05;
-peak_intervals = [13730, 13760; 13760, 13790; 13790, 13820; 13820, 13850];% 13745,13775,13805,13835 freq区间在+-15之间
 peak_prominence = 5;% 多突出的峰值才被认定为峰值;越小找出的peak越多,越可能获取到peak.但是有可能获取到太多从而干扰
+peak_smoothness = 100; % 对数据平滑的程度 用来寻找峰值
 for blade_idx = 1:n_blades
-% for blade_idx = 5:5
+% for blade_idx = 7:7
+    fprintf('blade:%d\n',blade_idx);
     % import data;
     blade_data = blade{blade_idx};
     freq = [blade_data.freq];
@@ -71,26 +80,29 @@ for blade_idx = 1:n_blades
     err  = [blade_data.err]; 
 
     % smooth data 
-    magn = smoothdata(magn,'movmean',100);
-    err = smoothdata(err,'movmean',100);
+    magn = smoothdata(magn,'movmean',peak_smoothness);
+    err = smoothdata(err,'movmean',peak_smoothness);
 
     % find peak
     peaks_y = [];
-    peaks_idx = [];
+    peaks_idx = [];    
+    % pks保存的是峰值;locs保存的是峰值对应的magn的idx
+    [pks, locs] = findpeaks(magn, 'MinPeakProminence', peak_prominence);   
     for i = 1:size(peak_intervals, 1)
-        freq_interval = peak_intervals(i, :);       
-        freq_interval_idxs = find(freq >= freq_interval(1) & freq <= freq_interval(2));
-        if ~isempty(freq_interval_idxs)
-            [pks, locs] = findpeaks(magn(freq_interval_idxs), 'MinPeakProminence', peak_prominence);
-            if ~isempty(pks)
-                [max_peak, max_idx] = max(pks);
-                peaks_y(end+1) = max_peak;
-                peaks_idx(end+1) = freq_interval_idxs(locs(max_idx));
-            end
+        peak_interval = peak_intervals(i, :);
+        locs_idx = find(freq(locs) >= peak_interval(1) & freq(locs) <= peak_interval(2));% loc_idx就表示的是第几个pks/locs
+        % check if we have a peak in the interval
+        if ~isempty(locs_idx)
+            % select the max peak
+            [~, locs_idx_idx] = max(pks(locs_idx));
+            max_idx = locs_idx(locs_idx_idx);  
+            % save the peak
+            peaks_y(end+1) = pks(max_idx);
+            peaks_idx(end+1) = locs(max_idx);
         end
-    end  
+    end
+
       
-    
     % remove unneed part before first peak and after last peak
     ignored_ratio_best = 0;
     residual_sum_best = Inf;   
@@ -119,7 +131,6 @@ for blade_idx = 1:n_blades
                 magn_tmp = magn_tmp(valid_idx);
                 err_tmp = err_tmp(valid_idx);     
                 peaks_idx_tmp = peaks_idx_tmp(peaks_idx_tmp <= valid_idx(end));
-                % peaks_y_tmp = peaks_y_tmp(peaks_idx_tmp <= valid_idx(end));
             end
         end
         
@@ -138,7 +149,6 @@ for blade_idx = 1:n_blades
     end
     fprintf('ignored_ratio_best:%d\n',ignored_ratio_best);
    
-
     % plot
     figure('units','normalized','outerposition',[0 0 0.7 0.7]);  
     set(gcf, 'WindowStyle', 'docked');
@@ -149,17 +159,14 @@ for blade_idx = 1:n_blades
     plot(freq, magn, 'Color', [0, 0.4470, 0.7410], 'DisplayName', 'Magnitude');
     plot(freq, err, 'Color', [0.7, 0.7, 0.7], 'DisplayName', 'Error');
     plot(freq(peaks_idx), peaks_y, 'bo', 'DisplayName', 'Peaks');
-    legend;   
-    
+    legend;       
     plot(freq_best, MDOF_Model(params_fitted_best,freq_best), 'g--', 'DisplayName', 'Fitted Model');
     hold off;
-
     subplot(2, 1, 2); 
     plot(freq_best, LM_Residual(params_fitted_best,freq_best,magn_best), 'm-','DisplayName', 'Residual');
     legend;
     xlabel('Frequency (Hz)');
     ylabel('Residual');
-    title('Residual Analysis');
     hold off;
 end
 

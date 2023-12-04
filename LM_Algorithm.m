@@ -1,6 +1,6 @@
 function params_fitted = LM_Algorithm(freq,magn,peaks_idx) 
-    % calculate mode number
-   n_modes = length(peaks_idx);
+    % calculate significant mode number for this balde
+    n_modes = length(peaks_idx);
     % set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
     params_initial = zeros(1, n_modes*4);
     for i = 1:n_modes 
@@ -11,18 +11,13 @@ function params_fitted = LM_Algorithm(freq,magn,peaks_idx)
         params_initial((i-1)*4 + 4) = 1000;
     end
     % set boundary
-    lb = [
-        0,0,-Inf,-Inf,...
-        0,0,-Inf,-Inf,...
-        0,0,-Inf,-Inf,...
-        0,0,-Inf,-Inf,
-        ];
-    ub = [
-        Inf,1,Inf,Inf,...
-        Inf,1,Inf,Inf,...
-        Inf,1,Inf,Inf,...
-        Inf,1,Inf,Inf,                                        
-        ];
+    % 为每组构建下界和上界
+    lb_group = [0, 0, -Inf, -Inf];
+    ub_group = [Inf, 1, Inf, Inf];
+    
+    % 重复这些组来构建完整的下界和上界
+    lb = repmat(lb_group, 1, n_modes);
+    ub = repmat(ub_group, 1, n_modes);
     % set lsqnonlin use levenberg-marquardt algorithm
     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt');
     residual = @(P) MDOF_Model(P,freq) - magn;
