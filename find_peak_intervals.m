@@ -22,9 +22,9 @@ function peak_intervals = find_peak_intervals(n_blades, n_modes, blade)
         end   
         % 添加峰值频率到数组
         peak_freqs = [peak_freqs, freq(locs)];
-        % fprintf('blade:%d\n',i);
-        % fprintf('peak_prominence:%d\n',peak_prominence);
-        % fprintf('peak_freqs:%d\n',freq(locs));
+        fprintf('blade:%d\n',i);
+        fprintf('peak_prominence:%d\n',peak_prominence);
+        fprintf('peak_freqs:%d\n',freq(locs));
     end
     % sort the freq upward
     peak_freqs = sort(peak_freqs);

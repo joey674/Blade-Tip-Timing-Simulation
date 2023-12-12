@@ -58,18 +58,30 @@ end
 
 
 %% get peak intervals
+% peak_intervals = [13730, 13760; 13760, 13780; 13800, 13807; 13831, 13839];
 % peak_intervals = [13739, 13748; 13773, 13779; 13800, 13807; 13831, 13839];
 % peak_intervals = [1.374005e+04, 1.375005e+04; 1.377473e+04, 1.378473e+04; 1.380403e+04, 1.381403e+04; 1.383250e+04, 1.384250e+04];
+
+% peak_intervals = find_peak_intervals(n_blades,n_modes,blade);
 peak_intervals = find_peak_intervals(n_blades,n_modes,blade);
 fprintf('%d ',peak_intervals);
 fprintf('\n');
 
 
 %% start algorithm
-ignored_ratio_max = 0.3;
-ignored_ratio_step = 0.05;
+% manual set params
 peak_prominence = 5;% 多突出的峰值才被认定为峰值;越小找出的peak越多,越可能获取到peak.但是有可能获取到太多从而干扰
 peak_smoothness = 100; % 对数据平滑的程度 用来寻找峰值
+% for saving to file
+freq_sorted_tofile = cell(1, n_blades);
+magn_sorted_tofile = cell(1, n_blades);
+err_sorted_tofile = cell(1, n_blades);
+freq_used_tofile = cell(1, n_blades);
+params_fitted_tofile = cell(1, n_blades);
+model_tofile = cell(1, n_blades);
+% for plot phase
+phase_arr = [];
+% start iterate(find best fitted freq range)
 for blade_idx = 1:n_blades
 % for blade_idx = 7:7
     fprintf('blade:%d\n',blade_idx);
@@ -83,7 +95,7 @@ for blade_idx = 1:n_blades
     magn = smoothdata(magn,'movmean',peak_smoothness);
     err = smoothdata(err,'movmean',peak_smoothness);
 
-    % find peak
+    % find peaks
     peaks_y = [];
     peaks_idx = [];    
     % pks保存的是峰值;locs保存的是峰值对应的magn的idx
@@ -94,19 +106,24 @@ for blade_idx = 1:n_blades
         % check if we have a peak in the interval
         if ~isempty(locs_idx)
             % select the max peak
-            [~, locs_idx_idx] = max(pks(locs_idx));
+            [peak_value_in_interval, locs_idx_idx] = max(pks(locs_idx));
             max_idx = locs_idx(locs_idx_idx);  
             % save the peak
-            peaks_y(end+1) = pks(max_idx);
-            peaks_idx(end+1) = locs(max_idx);
+            if peak_value_in_interval > 1.5 * err(locs(max_idx)) % if peak is not higher than err, then dont use this peak
+                peaks_y(end+1) = pks(max_idx);
+                peaks_idx(end+1) = locs(max_idx);
+            end
         end
     end
-
-      
-    % remove unneed part before first peak and after last peak
+    
+    % remove unneed part before first peak and after last peak(ignored_ratio)
     ignored_ratio_best = 0;
-    residual_sum_best = Inf;   
-    for ignored_ratio_tmp = 0:ignored_ratio_step:ignored_ratio_max
+    residual_sum_best = Inf; 
+    %find ignored_ratio range and step
+    ignored_ratio_min = 0.7 * mean(err)/max(peaks_y);
+    ignored_ratio_max = min(0.5*min(peaks_y), 0.3*max(peaks_y))/max(peaks_y);
+    ignored_ratio_step = (ignored_ratio_max-ignored_ratio_min)/(5*ignored_ratio_max);% will iterate 5 time
+    for ignored_ratio_tmp = ignored_ratio_min:ignored_ratio_step:ignored_ratio_max
         freq_tmp = freq;
         magn_tmp = magn;
         err_tmp = err;
@@ -132,19 +149,18 @@ for blade_idx = 1:n_blades
                 err_tmp = err_tmp(valid_idx);     
                 peaks_idx_tmp = peaks_idx_tmp(peaks_idx_tmp <= valid_idx(end));
             end
-        end
-        
-        params_fitted = LM_Algorithm(freq_tmp,magn_tmp,peaks_idx_tmp);
-        residual_sum = sum(abs(LM_Residual(params_fitted,freq_tmp,magn_tmp)))/length(freq_tmp);
+        end        
+        params_fitted = LM_algorithm(freq_tmp,magn_tmp,peaks_idx_tmp);
+        residual_sum = sum(abs(MDOF_model_magn(params_fitted,freq_tmp) - magn_tmp))/length(freq_tmp);
         fprintf('ignored_ratio_residual_sum:%d\n',residual_sum);
-
         % save result if this ignored_ratio is better
         if residual_sum < residual_sum_best
             residual_sum_best = residual_sum;
             ignored_ratio_best = ignored_ratio_tmp;   
             freq_best = freq_tmp;
             magn_best = magn_tmp;
-            params_fitted_best = params_fitted;           
+            params_fitted_best = params_fitted;       
+            peaks_idx_best = peaks_idx_tmp;
         end                   
     end
     fprintf('ignored_ratio_best:%d\n',ignored_ratio_best);
@@ -160,15 +176,34 @@ for blade_idx = 1:n_blades
     plot(freq, err, 'Color', [0.7, 0.7, 0.7], 'DisplayName', 'Error');
     plot(freq(peaks_idx), peaks_y, 'bo', 'DisplayName', 'Peaks');
     legend;       
-    plot(freq_best, MDOF_Model(params_fitted_best,freq_best), 'g--', 'DisplayName', 'Fitted Model');
+    plot(freq_best, MDOF_model_magn(params_fitted_best,freq_best), 'g--', 'DisplayName', 'Fitted Model');
     hold off;
     subplot(2, 1, 2); 
-    plot(freq_best, LM_Residual(params_fitted_best,freq_best,magn_best), 'm-','DisplayName', 'Residual');
+    plot(freq_best, MDOF_model_magn(params_fitted,freq_best) - magn_best, 'm-','DisplayName', 'Residual');
     legend;
     xlabel('Frequency (Hz)');
     ylabel('Residual');
     hold off;
+    
+    % save to file
+    freq_sorted_tofile{blade_idx} = freq;
+    magn_sorted_tofile{blade_idx} = magn;
+    err_sorted_tofile{blade_idx} = err;
+    freq_used_tofile{blade_idx} = freq_best;
+    params_fitted_tofile{blade_idx} = params_fitted_best;
+    model_fitted_tofile{blade_idx} = MDOF_model_magn(params_fitted_best,freq_best);
+
+    % plot phase 
+    phase = MDOF_model_phase(params_fitted_best,freq_best);
+    phase_arr = [phase_arr, phase(peaks_idx_best)];
 end
+filename = strrep(dataset, '.mat', '_MDOF.mat');
+save(filename, 'freq_sorted_tofile','magn_sorted_tofile','err_sorted_tofile','freq_used_tofile','params_fitted_tofile','model_fitted_tofile');
+
+figure('units','normalized','outerposition',[0 0 0.7 0.7]); 
+set(gcf, 'WindowStyle', 'docked');
+polarplot(phase_arr,2, 'o');
+hold off;
 
 fprintf('[**********damping ratio calculation finished.**********]\n');
 
