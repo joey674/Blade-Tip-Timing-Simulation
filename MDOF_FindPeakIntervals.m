@@ -1,7 +1,6 @@
-function peak_intervals = find_peak_intervals(n_blades, n_modes, blade)
+function peak_intervals = MDOF_FindPeakIntervals(n_blades, n_modes, blade,data_smoothness,peak_interval_width)
     peak_prominence_max = 20;
     peak_prominence_step = 0.5;
-    peak_interval_width = 10; 
 
     peak_freqs = []; 
     for i = 1:n_blades
@@ -10,7 +9,7 @@ function peak_intervals = find_peak_intervals(n_blades, n_modes, blade)
         freq = [blade_data.freq];
         magn = [blade_data.magn];        
         % smooth 
-        magn = smoothdata(magn, 'movmean', 100);  
+        magn = smoothdata(magn, 'movmean', data_smoothness);  
         % init PeakProminence       
         pks = [];
         locs = [];   
@@ -22,9 +21,9 @@ function peak_intervals = find_peak_intervals(n_blades, n_modes, blade)
         end   
         % 添加峰值频率到数组
         peak_freqs = [peak_freqs, freq(locs)];
-        fprintf('blade:%d\n',i);
-        fprintf('peak_prominence:%d\n',peak_prominence);
-        fprintf('peak_freqs:%d\n',freq(locs));
+        % fprintf('blade:%d\n',i);
+        % fprintf('peak_prominence:%d\n',peak_prominence);
+        % fprintf('peak_freqs:%d\n',freq(locs));
     end
     % sort the freq upward
     peak_freqs = sort(peak_freqs);
