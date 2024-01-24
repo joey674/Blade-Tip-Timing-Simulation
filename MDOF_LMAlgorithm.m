@@ -13,11 +13,19 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
     n_modes = length(peaks_idx);
     % weights
     weights = ones(size(freq));
-    weights_value = 20;
+    peak_weight = 50;
+    edge_weight = 10;
     for i = 1:size(weights_idx, 1)
+        peak_idx = peaks_idx(i);
         start_idx = max(1, weights_idx(i, 1));
         end_idx = min(length(freq), weights_idx(i, 2));
-        weights(start_idx:end_idx) = weights_value;
+        % Gaussian weight distribution from peak to edges
+        sigma = (end_idx - start_idx) / 10; 
+        x = start_idx:end_idx;
+        gaussian_weights = peak_weight * exp(-((x - peak_idx).^2 / (2 * sigma^2)));
+        % Ensure edge weights are not less than edge_weight
+        gaussian_weights(gaussian_weights < edge_weight) = edge_weight;
+        weights(start_idx:end_idx) = gaussian_weights;
     end
     % set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
     params_initial = zeros(1, n_modes*4);
@@ -35,7 +43,9 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
     end    
 
     % set lsqnonlin use levenberg-marquardt algorithm
-    options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off');
+    options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
+        'MaxIterations', 1000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
+    % options = optimoptions('lsqnonlin', 'Algorithm', 'interior-point', 'Display', 'off');
     residual = @(P) weights .* (MDOF_Model(P,freq) - magn);
     params_fitted = lsqnonlin(residual, params_initial, lb, ub, options);   
 end

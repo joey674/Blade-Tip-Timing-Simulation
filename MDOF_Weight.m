@@ -39,8 +39,8 @@ function weights_idx = MDOF_Weight(magn,selected_peaks_idx)
             peak_loc = locs(closest_idx);
             peak_width = widths(closest_idx);
               
-            left_search_range_idx = round(max(peak_loc - 3 * peak_width, 1));% 搜索范围
-            right_search_range_idx = round(min(peak_loc + 3 * peak_width, length(magn)));
+            left_search_range_idx = round(max(peak_loc - 2 * peak_width, 1));% 搜索范围
+            right_search_range_idx = round(min(peak_loc + 2 * peak_width, length(magn)));
             left_troughs = find(troughs_locs >= left_search_range_idx & troughs_locs <= peak_loc); % 在搜索范围内找到波谷的索引
             right_troughs = find(troughs_locs >= peak_loc & troughs_locs <= right_search_range_idx);    
             if ~isempty(left_troughs) % 找到左侧和右侧最明显的波谷
