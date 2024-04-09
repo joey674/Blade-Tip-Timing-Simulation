@@ -1,5 +1,5 @@
 %% Model of MDOF(to calculate magn)
-function [H_kl_m,H_kl_p] = MDOF_Model(P, w)
+function H_kl = MDOF_Model(P, w)
     % cut the input back to n_modes vectors
     n_modes = length(P) / 4;
     ParVecArray = cell(1, n_modes);
@@ -17,6 +17,4 @@ function [H_kl_m,H_kl_p] = MDOF_Model(P, w)
             (2 * (W_m * (r_re*D_m - r_im*sqrt(1-D_m*D_m)) + 2i*r_re*w))./...
             (W_m*W_m - w.*w + 1i*2*D_m*W_m*w);
     end
-    H_kl_m = abs(H_kl);
-    H_kl_p = angle(H_kl);
 end

@@ -5,15 +5,16 @@
 %   - peaks_idx: 
 
 % Adjust variables:
-%   - weights_value: 
-%   - core_weights_value: 
+%   - deviation_peaks_idx
+%   - peak_weight
+%   - edge_weight
 
 function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx) 
-    % calculate significant mode number for this balde
+    %% calculate significant mode number for this balde
     n_modes = length(peaks_idx);
-    % weights
+    %% weights
     weights = ones(size(freq));
-    peak_weight = 50;
+    peak_weight = 10000;
     edge_weight = 10;
     for i = 1:size(weights_idx, 1)
         peak_idx = peaks_idx(i);
@@ -27,7 +28,8 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
         gaussian_weights(gaussian_weights < edge_weight) = edge_weight;
         weights(start_idx:end_idx) = gaussian_weights;
     end
-    % set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
+    %% set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
+    deviation_peaks_idx = 1;
     params_initial = zeros(1, n_modes*4);
     lb = [];ub = [];
     for i = 1:n_modes 
@@ -36,8 +38,8 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
         % r_re does matters and must set to magn_each_blade_smoothed(peaks_locs(i)),r_im is not that important
         params_initial((i-1)*4 + 3) = magn(peaks_idx(i));
         params_initial((i-1)*4 + 4) = 100;
-        lb_s = [freq(peaks_idx(i))-5, 0, -Inf, -Inf];
-        ub_s = [freq(peaks_idx(i))+5, 0.01, Inf, Inf];
+        lb_s = [freq(peaks_idx(i))-deviation_peaks_idx, 0, -Inf, -Inf];
+        ub_s = [freq(peaks_idx(i))+deviation_peaks_idx, 0.01, Inf, Inf];
         lb = [lb,lb_s];
         ub = [ub,ub_s];
     end    
@@ -46,7 +48,7 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
         'MaxIterations', 1000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
     % options = optimoptions('lsqnonlin', 'Algorithm', 'interior-point', 'Display', 'off');
-    residual = @(P) weights .* (MDOF_Model(P,freq) - magn);
+    residual = @(P) weights .* ( abs(MDOF_Model(P,freq)) - magn ).^2;
     params_fitted = lsqnonlin(residual, params_initial, lb, ub, options);   
 end
 

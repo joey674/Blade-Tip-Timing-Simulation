@@ -32,7 +32,6 @@ function weights_idx = MDOF_Weight(magn,selected_peaks_idx)
         [min_distance, closest_idx] = min(abs(locs - selected_peaks_idx(i)));% 找到最近的peaks
         if min_distance > 1000 %如果离太远就有问题了，算法跳过这个峰值并对这个峰值使用默认值
             fprintf("error! select peak no found\n");
-            weights_idx = [weights_idx;[selected_peaks_idx(i)-50,selected_peaks_idx(i)+50]];
             left_boundary_idx = selected_peaks_idx(i)-100;
             right_boundary_idx = selected_peaks_idx(i)+100;
         else
