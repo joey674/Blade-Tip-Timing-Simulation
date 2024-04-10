@@ -12,9 +12,10 @@
 function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx) 
     %% calculate significant mode number for this balde
     n_modes = length(peaks_idx);
+
     %% weights
     weights = ones(size(freq));
-    peak_weight = 10000;
+    peak_weight = 1000;
     edge_weight = 10;
     for i = 1:size(weights_idx, 1)
         peak_idx = peaks_idx(i);
@@ -28,6 +29,7 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
         gaussian_weights(gaussian_weights < edge_weight) = edge_weight;
         weights(start_idx:end_idx) = gaussian_weights;
     end
+
     %% set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
     deviation_peaks_idx = 1;
     params_initial = zeros(1, n_modes*4);

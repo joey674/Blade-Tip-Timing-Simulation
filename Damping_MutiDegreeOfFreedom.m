@@ -4,7 +4,7 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
     %% init params
     n_blades = length(blade);
     EO_str = num2str(EO);
-    filename = strrep(dataset_path, '.mat', ['_EO' EO_str '_PeaksIdx.mat']);
+    filename = fullfile('PeaksIdx', sprintf('EO%d_PeaksIdx_.mat', EO));
     if exist(filename,"file") == 2
        data = load(filename, 'peaks_idx_magn');
     end 
@@ -19,13 +19,15 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
 
-        %% plot origin magn(after smoothed) 
+        %% plot origin magn
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);subplot(2,1,1);set(gcf, 'WindowStyle', 'docked');
         title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;
-        magn = Damping_NoiseFilter(magn);
-        plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Origin Magnitude');  
+        % plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Origin Magnitude');  
+        magn = smoothdata(magn,"movmean",100);
+        plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Magnitude after movmean');  
+
         
 
         %% get peaks_idx(load existed file or manually input)               
@@ -63,8 +65,8 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         %% set boundary
         boundary_idx = MDOF_Bound(magn,peaks_idx);
 
-        %% reform magn by rescaled and plot   
-        magn = Damping_NoiseFilter_reformed(magn,peaks_idx,weights_idx);
+        %% plot magn after smoothed 
+        % magn = Damping_NoiseFilter_reformed(magn,peaks_idx,weights_idx);
         err = smoothdata(err,'movmean',100);
         plot(freq,magn, 'Color', [0.4, 0.5, 0.6], 'DisplayName', 'Smoothed Magnitude');
         plot(freq,err, 'Color', [0.7, 0.7, 0.7], 'DisplayName', 'Error');
@@ -90,7 +92,7 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         xlabel('Frequency (Hz)');ylabel('Phase (degrees)');
         hold on;
         % from P_Phase
-        plot(freq, Damping_NoiseFilter(rad2deg(phase)), 'Color', [0.7, 0.8, 1.0]);
+        plot(freq, smoothdata(rad2deg(phase),"movmean",100), 'Color', [0.7, 0.8, 1.0]);
         plot(freq(peaks_idx), rad2deg(phase(peaks_idx)),'go');
         % from model
         ph = atan(imag(MDOF_Model(params_m, freq)) ./ real(MDOF_Model(params_m, freq)));
