@@ -19,13 +19,14 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
 
-        %% plot origin magn
+        %% plot origin magn(after smoothed) 
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);subplot(2,1,1);set(gcf, 'WindowStyle', 'docked');
         title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;
-        % plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Origin Magnitude');  
-        magn_smoothed = Damping_NoiseFilter(magn);
+        magn = Damping_NoiseFilter(magn);
+        plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Origin Magnitude');  
+        
 
         %% get peaks_idx(load existed file or manually input)               
         peaks_idx = [];
@@ -57,10 +58,10 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         peaks_idx = sort(peaks_idx);
 
         %% set weights
-        weights_idx = MDOF_Weight(magn_smoothed,peaks_idx);
+        weights_idx = MDOF_Weight(magn,peaks_idx);
 
         %% set boundary
-        boundary_idx = MDOF_Bound(magn_smoothed,peaks_idx);
+        boundary_idx = MDOF_Bound(magn,peaks_idx);
 
         %% reform magn by rescaled and plot   
         magn = Damping_NoiseFilter_reformed(magn,peaks_idx,weights_idx);
@@ -109,7 +110,7 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         % graphname = sprintf('graph\\EO%d_blade%d_LM_NonLinWeight_WithPhase_ReDenoise.png', EO, blade_idx);% save graph
         % saveas(gcf, graphname);        
     end
-    % save(filename, 'peaks_idx_magn','excitate_phase','damping_ratios','excitate_freq');
+    save(filename, 'peaks_idx_magn','excitate_phase','damping_ratios','excitate_freq');
 
     fprintf('[**********damping:muti degree of freedom approximation finished.**********]\n');
 end
