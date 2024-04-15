@@ -19,12 +19,12 @@ function weights_idx = MDOF_Weight(magn,selected_peaks_idx)
     
     % get peaks info 
     magn_fp = magn;
-    min_peak_prominence = 0.05 * (max(magn_fp) - mean(magn_fp));
+    min_peak_prominence = 0.1 * (max(magn_fp) - mean(magn_fp));
     [~, locs, widths, ~] = findpeaks(magn_fp, 'MinPeakProminence', min_peak_prominence);
     
     % get through info
     magn_inv = -magn;
-    min_peak_prominence_inv = 0.01 * (max(magn_fp) - mean(magn_fp));
+    min_peak_prominence_inv = 0.03 * (max(magn_fp) - mean(magn_fp));
     [~, troughs_locs, ~, troughs_prominences] = findpeaks(magn_inv,'MinPeakProminence', min_peak_prominence_inv);
     
     % peaks weight 
