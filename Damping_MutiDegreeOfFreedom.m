@@ -1,12 +1,12 @@
-function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
+function Damping_MutiDegreeOfFreedom(blade,EO)
     fprintf('[**********damping:muti degree of freedom approximation starts.**********]\n');
     
     %% init params
     n_blades = length(blade);
-    EO_str = num2str(EO);
-    filename = fullfile('PeaksIdx', sprintf('EO%d_PeaksIdx_.mat', EO));
-    if exist(filename,"file") == 2
-       data = load(filename, 'peaks_idx_magn');
+    peakidx_filename = fullfile('PeaksIdx', sprintf('EO%d_PeaksIdx.mat', EO));
+    result_filename =  fullfile('Result', sprintf('EO%d_MDOF.mat', EO));
+    if exist(peakidx_filename,"file") == 2
+       data = load(peakidx_filename, 'peaks_idx_magn');
     end 
 
     %% deal every blades
@@ -19,26 +19,23 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
 
-        %% plot origin magn
+        %% plot smoothed magn
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);subplot(2,1,1);set(gcf, 'WindowStyle', 'docked');
         title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;
-        % plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Origin Magnitude');  
         magn = smoothdata(magn,"movmean",100);
         plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Magnitude after movmean');  
 
-        
-
         %% get peaks_idx(load existed file or manually input)               
         peaks_idx = [];
-        if exist(filename,"file") == 2% load existed preset file
+        if exist(peakidx_filename,"file") == 2% load existed preset file
             peaks_idx = data.peaks_idx_magn{blade_idx};
             % for i = 1:length(peaks_idx)
             %     plot(freq(peaks_idx(i)), magn(peaks_idx(i)), 'bo', 'DisplayName', ['Peak idx ' num2str(peaks_idx(i))]);
             % end
         end         
-        if exist(filename,"file") ~= 2% manually input 
+        if exist(peakidx_filename,"file") ~= 2% manually input 
             % error('manually input is unimplemented');
             while true
                 [freq_get, ~] = ginput(1); % Get one point
@@ -112,7 +109,8 @@ function Damping_MutiDegreeOfFreedom(dataset_path,blade,EO)
         % graphname = sprintf('graph\\EO%d_blade%d_LM_NonLinWeight_WithPhase_ReDenoise.png', EO, blade_idx);% save graph
         % saveas(gcf, graphname);        
     end
-    save(filename, 'peaks_idx_magn','excitate_phase','damping_ratios','excitate_freq');
+    save(peakidx_filename, 'peaks_idx_magn');
+    save(result_filename,'excitate_phase','damping_ratios','excitate_freq');
 
     fprintf('[**********damping:muti degree of freedom approximation finished.**********]\n');
 end

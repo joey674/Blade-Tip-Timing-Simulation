@@ -13,7 +13,8 @@ for k = 1:size(datasets, 1)
     data = load(dataset_path, 'mean_RPM', 'P_Magn','P_Phase', 'Fit_Error');
     blade_sets = Damping_PreProcess(EO, data, n_blades);
     for i = 1:length(blade_sets)
-        Damping_MutiDegreeOfFreedom(dataset_path, blade_sets{i}, EO(i));
+        Damping_MutiDegreeOfFreedom(blade_sets{i}, EO(i));
+        % Damping_HalfPowerBandWidth(blade_sets{i}, EO(i));
     end
 end
 
