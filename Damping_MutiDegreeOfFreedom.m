@@ -10,7 +10,8 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
     end 
 
     %% deal every blades
-    for blade_idx = 1:n_blades 
+    % for blade_idx = 1:n_blades
+    for blade_idx = 1:1
         %% init
         fprintf('blade:%d\n',blade_idx); 
         blade_data = blade{blade_idx};
@@ -18,13 +19,17 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
         magn = [blade_data.magn];
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
-
-        %% plot smoothed magn
+       
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);subplot(2,1,1);set(gcf, 'WindowStyle', 'docked');
         title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;
-        magn = smoothdata(magn,"movmean",100);
+       
+        %% noise reduce
+        magn = Damping_NoiseFilter(magn);
+        err = Damping_NoiseFilter(err);
+        % phase = smoothdata(phase,'movmean',10);
+        
         plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Magnitude after movmean');  
 
         %% get peaks_idx(load existed file or manually input)               
@@ -61,12 +66,6 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
 
         %% set boundary
         boundary_idx = MDOF_Bound(magn,peaks_idx);
-
-        %% plot magn after smoothed 
-        % magn = Damping_NoiseFilter_reformed(magn,peaks_idx,weights_idx);
-        err = smoothdata(err,'movmean',100);
-        plot(freq,magn, 'Color', [0.4, 0.5, 0.6], 'DisplayName', 'Smoothed Magnitude');
-        plot(freq,err, 'Color', [0.7, 0.7, 0.7], 'DisplayName', 'Error');
     
         %% cut unneeded part to plot and simulate
         [freq_cut,magn_cut,weights_idx_cut,peaks_idx_cut] = MDOF_SetBoundary(freq,magn,peaks_idx,weights_idx,boundary_idx);
@@ -75,7 +74,7 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
 
         %% least squared method
         params_m = MDOF_LMAlgorithm(freq_cut,magn_cut,peaks_idx_cut,weights_idx_cut);
-        plot(freq_cut, abs(MDOF_Model(params_m,freq_cut)),'--','Color',[0,0.7,0], 'DisplayName', 'Fitted Model');
+        plot(freq_cut, abs(MDOF_Model(params_m,freq_cut)),'--','Color',[0,0.7,0], 'DisplayName', 'Fitted Model');%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for i = 1:size(weights_idx_cut, 1)
             startIdx = weights_idx_cut(i, 1);
             endIdx = weights_idx_cut(i, 2); 
@@ -89,21 +88,26 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
         xlabel('Frequency (Hz)');ylabel('Phase (degrees)');
         hold on;
         % from P_Phase
-        plot(freq, smoothdata(rad2deg(phase),"movmean",100), 'Color', [0.7, 0.8, 1.0]);
-        plot(freq(peaks_idx), rad2deg(phase(peaks_idx)),'go');
+        phase_from_data = phase;
+        phase_from_data = rad2deg(phase);
+        % phase_from_data = unwrap(phase_from_data);
+        plot(freq, phase_from_data, 'Color', [0.8, 0.9, 1.0]);
+        plot(freq, smoothdata(phase_from_data,"movmean",100), 'Color', [0.7, 0.8, 1.0]);
         % from model
-        ph = atan(imag(MDOF_Model(params_m, freq)) ./ real(MDOF_Model(params_m, freq)));
-        plot(freq, rad2deg(ph), 'Color', [0, 0.9, 0], 'DisplayName', 'Phase');
+        phase_from_model = atan(imag(MDOF_Model(params_m, freq_cut)) ./ real(MDOF_Model(params_m, freq_cut)));
+        phase_from_model = rad2deg(phase_from_model);
+        % phase_from_model = unwrap(phase_from_model);
+        plot(freq_cut, phase_from_model, 'Color', [0, 0.9, 0], 'DisplayName', 'Phase');
         line([freq(boundary_idx(1)),freq(boundary_idx(1))],[-150,150],'Color','red','LineStyle','--');
         line([freq(boundary_idx(2)),freq(boundary_idx(2))],[-150,150],'Color','red','LineStyle','--');   
         hold off;
 
         %% save to file
-        params_fitted{blade_idx} = reshape(params_m,4, length(peaks_idx_cut)).';
+        params_fitted{blade_idx} = reshape(params_m,3, length(peaks_idx_cut)).';
         excitate_freq{blade_idx} = params_fitted{blade_idx}(:,1).';
         damping_ratios{blade_idx} = params_fitted{blade_idx}(:,2).'; 
         peaks_idx_magn{blade_idx} = peaks_idx;
-        excitate_phase{blade_idx} = ph(peaks_idx);
+        excitate_phase{blade_idx} = phase_from_model(peaks_idx_cut);
         
         %% save graph
         % graphname = sprintf('graph\\EO%d_blade%d_LM_NonLinWeight_WithPhase_ReDenoise.png', EO, blade_idx);% save graph

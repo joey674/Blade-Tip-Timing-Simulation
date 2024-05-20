@@ -1,7 +1,13 @@
+% MDOF_PreProcess
+% load the original data and takes 4 needed parameters: mean_PRM,Magn,Phase,
+% Err;Then transfer The RPM into the frequency; after that the data will be
+% rearrange along with rpm RPM so that the frequency is accending;
+
+
 function blade = Damping_PreProcess(EO,data,n_blades)
     blade = cell(1,length(EO));
     for i = 1:length(EO)
-        Freq = data.mean_RPM * EO(i) / 60; % 数据Magn/Err是一样的，只是Freq是乘以不同的EO     
+        Freq = data.mean_RPM * EO(i) / 60;
         Magn = cell(1, n_blades); 
         Phase = cell(1, n_blades); 
         Err = cell(1, n_blades);         

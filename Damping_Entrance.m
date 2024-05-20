@@ -1,3 +1,5 @@
+
+
 clear;
 datasets = {
     '../Dataset/EO24/App4_SD24_37000_down_offen_220_run3_RPMRange-34100_34700_thres_S7_RotorMethod_movmean_10.mat', 12, [24];
@@ -15,6 +17,9 @@ for k = 1:size(datasets, 1)
     for i = 1:length(blade_sets)
         Damping_MutiDegreeOfFreedom(blade_sets{i}, EO(i));
         % Damping_HalfPowerBandWidth(blade_sets{i}, EO(i));
+
+        % Research_NoiseReduction(blade_sets{i}, EO(i));
+        % Research_Mode(blade_sets{i}, EO(i));
     end
 end
 
