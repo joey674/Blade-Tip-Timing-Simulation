@@ -18,22 +18,46 @@ function Damping_HalfPowerBandWidth(blade,EO)
         magn = [blade_data.magn];
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
-        
-        %% plot smoothed magn
+
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);subplot(2,1,1);set(gcf, 'WindowStyle', 'docked');
         title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;
-        magn = smoothdata(magn,"movmean",100);
-        plot(freq, magn,'Color', [0.7, 0.8, 1.0],'DisplayName', 'Magnitude after movmean');  
-
-        %% get peaks_idx(load existed file)               
+        
+        %% noise reduce
+        % plot(freq, magn,'o','Color', [0.8, 0.9, 1.0],'DisplayName', 'Magnitude');  
+        magn = Damping_NoiseFilter(magn);
+        err = Damping_NoiseFilter(err);
+        plot(freq, magn,'Color', [0.8, 0.9, 1.0],'DisplayName', 'Magnitude');  
+        
+        %% get peaks_idx(load existed file or manually input)               
         peaks_idx = [];
         if exist(peakidx_filename,"file") == 2% load existed preset file
             peaks_idx = data.peaks_idx_magn{blade_idx};
-        else 
-            err("need to select peak in MDOF first");
+            % for i = 1:length(peaks_idx)
+            %     plot(freq(peaks_idx(i)), magn(peaks_idx(i)), 'bo', 'DisplayName', ['Peak idx ' num2str(peaks_idx(i))]);
+            % end
+        end         
+        if exist(peakidx_filename,"file") ~= 2% manually input 
+            % error('manually input is unimplemented');
+            while true
+                [freq_get, ~] = ginput(1); % Get one point
+                if isempty(freq_get)  % press enter to stop
+                    break;
+                end
+                [~, idx] = min(abs(freq - freq_get));
+                idx = round(idx);
+                searchRange = 300;
+                startIndex = max(1, idx - searchRange);
+                endIndex = min(length(magn), idx + searchRange);
+                [~, maxIndex] = max(magn(startIndex:endIndex));
+                idx = startIndex + maxIndex - 1;
+                plot(freq(idx), magn(idx), 'bo', 'DisplayName', ['Peak idx ' num2str(idx)]);
+                peaks_idx = [peaks_idx,idx];            
+            end
         end
+        fprintf("peaks_idx:%d ",peaks_idx);fprintf("\n");    
+        peaks_idx = sort(peaks_idx);
 
         %% calculate damping ratio
         damping_ratio = zeros(size(peaks_idx));
@@ -51,11 +75,14 @@ function Damping_HalfPowerBandWidth(blade,EO)
             end
             % calculate damping ratio
             damping_ratio(j) = (f2 - f1) / (2 * freq(peaks_idx(j)));
+            plot(f2,);
         end    
 
         %% save to file 
         damping_ratios{blade_idx} = damping_ratio;
         excitate_freq{blade_idx} = freq(peaks_idx);
+
+
     end        
     save(result_filename,'damping_ratios','excitate_freq');
 

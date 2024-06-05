@@ -14,24 +14,30 @@
 %   - boundary:
 
 function weights_idx = MDOF_Weight(magn,selected_peaks_idx)
+
+    %%      
+    
+
+
+    %%
     selected_peaks_idx = sort(selected_peaks_idx);
     weights_idx = [];
     
     % get peaks info 
     magn_fp = magn;
-    min_peak_prominence = 0.1 * (max(magn_fp) - mean(magn_fp));
+    min_peak_prominence = 0.1 * (max(magn_fp) - mean(magn_fp));%% 找到尽可能多的peak
     [~, locs, widths, ~] = findpeaks(magn_fp, 'MinPeakProminence', min_peak_prominence);
     
     % get through info
     magn_inv = -magn;
-    min_peak_prominence_inv = 0.03 * (max(magn_fp) - mean(magn_fp));
+    min_peak_prominence_inv = 0.5 * (max(magn_fp) - mean(magn_fp));
     [~, troughs_locs, ~, troughs_prominences] = findpeaks(magn_inv,'MinPeakProminence', min_peak_prominence_inv);
     
     % peaks weight 
     for i = 1:length(selected_peaks_idx)
         [min_distance, closest_idx] = min(abs(locs - selected_peaks_idx(i)));% 找到最近的peaks
         if min_distance > 1000 %如果离太远就有问题了，算法跳过这个峰值并对这个峰值使用默认值
-            fprintf("error! select peak no found\n");
+            fprintf("weights: select peak no found\n");
             left_boundary_idx = selected_peaks_idx(i)-100;
             right_boundary_idx = selected_peaks_idx(i)+100;
         else
@@ -60,13 +66,13 @@ function weights_idx = MDOF_Weight(magn,selected_peaks_idx)
         if i ~= length(selected_peaks_idx)% 右边peaks[0,3/4]
             if right_boundary_idx > selected_peaks_idx(i)+(selected_peaks_idx(i+1) - selected_peaks_idx(i))*3/4
                 right_boundary_idx = selected_peaks_idx(i)+(selected_peaks_idx(i+1) - selected_peaks_idx(i))*1/2;
-                fprintf("error! right_boundary_idx exceed\n");
+                fprintf("weights: right_boundary_idx exceed\n");
             end
         end
         if i ~= 1
             if left_boundary_idx < weights_idx(end,2)
                 left_boundary_idx = weights_idx(end,2);
-                fprintf("error! left_boundary_idx exceed\n");
+                fprintf("weights: left_boundary_idx exceed\n");
             end
         end
         weights_idx = [weights_idx;[round(left_boundary_idx),round(right_boundary_idx)]];   

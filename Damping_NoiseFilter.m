@@ -1,4 +1,4 @@
 function [output] = Damping_NoiseFilter(input)
-    output = smoothdata(input,"sgolay",100);
+    output = smoothdata(input,"rlowess",200);
 end
 
