@@ -11,82 +11,81 @@ function Research_Mode(blade,EO)
         magn = [blade_data.magn];
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
-      
-        %%
+
+        %% deep learning
+        % % phase_filename = fullfile('Phase', sprintf('EO%d_Blade%d.png', EO,blade_idx));
+
+        % figure('units', 'normalized', 'outerposition', [0 0 1 1]);
+        % set(gcf, 'WindowStyle', 'docked');
+        % title(sprintf('EO%d, blade%d', EO, blade_idx));
+        % hold on;
+        % legend;
+        % subplot(3,1,1);
+        % plot(freq, magn,'o','Color', [0.8, 0.9, 1.0]);  hold on;
+        % plot(freq, smoothdata(magn,'rlowess',200),'o');  
+        % 
+        % subplot(3,1,2);
+        % plot(freq, phase,'o','Color', [0.8, 0.9, 1.0]);  
+        % 
+        % subplot(3,1,3);
+        % plot(freq, unwrap(smoothdata(phase,'movmean',200)),'o','Color', [0.8, 0.9, 1.0]);  
+
+
+
+        % % saveas(gcf, phase_filename);    
+
+        %% 使用相位密度寻找峰值
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);set(gcf, 'WindowStyle', 'docked');
-        title(sprintf('EO%d, blade%d', EO, blade_idx));
+        title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
         hold on;
         legend;  
 
-        % subplot(4,1,1);
-        % plot(freq, magn,'o','Color', [0.8, 0.9, 1.0]);  hold on;
-        % plot(freq, smoothdata(magn,'rlowess',200),'o');  
-        % 
-        % subplot(4,1,2);
-        % plot(freq, phase,'o','Color', [0.8, 0.9, 1.0]);  
-        
-        phase_smoothed = smoothdata(phase,'movmean',200);
-        subplot(2,1,1);
-        plot(freq, phase_smoothed,'o','Color', [0.8, 0.9, 1.0]);  
+        subplot(4,1,1);
+        plot(freq, magn,'o','Color', [0.8, 0.9, 1.0]);  hold on;
+        plot(freq, smoothdata(magn,'rlowess',200),'o');  
 
-        dphase_dfreq = diff(phase_smoothed);
-        subplot(2,1,2);
-        plot(dphase_dfreq, 'r-', 'DisplayName', 'dPhase/dFreq');
+        subplot(4,1,2);
+        plot(freq, phase,'o','Color', [0.8, 0.9, 1.0]);  
 
+        % 定义频率范围和区间数
+        num_bins = 50;  %%%%%%%%%%%%%%%%%%%% 区间精度,分得越多得到的范围越精细
+        freq_edges = linspace(min(freq), max(freq), num_bins + 1);
+        phase_range = [-0.2, 0.2]; %%%%%%%%%%%%%%%%% 相位范围
 
-        %% 使用相位密度寻找峰值
-        % figure('units', 'normalized', 'outerposition', [0 0 1 1]);set(gcf, 'WindowStyle', 'docked');
-        % title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
-        % hold on;
-        % legend;  
-        % 
-        % subplot(4,1,1);
-        % plot(freq, magn,'o','Color', [0.8, 0.9, 1.0]);  hold on;
-        % plot(freq, smoothdata(magn,'rlowess',200),'o');  
-        % 
-        % subplot(4,1,2);
-        % plot(freq, phase,'o','Color', [0.8, 0.9, 1.0]);  
+        % 初始化密度数组
+        phase_density = zeros(1, num_bins);
+        freq_centers = (freq_edges(1:end-1) + freq_edges(2:end)) / 2;
 
-        % % 定义频率范围和区间数
-        % num_bins = 50;  %%%%%%%%%%%%%%%%%%%% 区间精度,分得越多得到的范围越精细
-        % freq_edges = linspace(min(freq), max(freq), num_bins + 1);
-        % phase_range = [-0.2, 0.2]; %%%%%%%%%%%%%%%%% 相位范围
-        % 
-        % % 初始化密度数组
-        % phase_density = zeros(1, num_bins);
-        % freq_centers = (freq_edges(1:end-1) + freq_edges(2:end)) / 2;
-        % 
-        % % 计算每个频率区间内相位在指定范围内的密度
-        % for i = 1:num_bins
-        %     % 当前频率区间
-        %     idx = freq >= freq_edges(i) & freq < freq_edges(i+1);
-        %     current_phase = phase(idx);
-        % 
-        %     % 计算相位在-0.5到0.5之间的点数比例作为密度
-        %     num_points_in_range = sum(current_phase >= phase_range(1) & current_phase <= phase_range(2));
-        %     total_points = length(current_phase);
-        % 
-        %     if total_points > 0
-        %         phase_density(i) = num_points_in_range / total_points;
-        %     else
-        %         phase_density(i) = 0;
-        %     end
-        % end
-        % 
-        % % % 绘制相位密度图
-        % subplot(4,1,3);
-        % plot(freq_centers, phase_density, 'o', 'LineWidth', 2);
-        % 
-        % % 获取所有密度在0.05以下的频率区间的范围
-        % low_density_threshold = 0.1;%%%%%%%%%%%%%%%%%%%%%%相位密度,中间空的地方就是有相变
-        % low_density_ranges = [];
-        % 
-        % for i = 1:num_bins
-        %     if phase_density(i) < low_density_threshold
-        %         low_density_ranges = [low_density_ranges; freq_edges(i), freq_edges(i+1)];
-        %     end
-        % end
+        % 计算每个频率区间内相位在指定范围内的密度
+        for i = 1:num_bins
+            % 当前频率区间
+            idx = freq >= freq_edges(i) & freq < freq_edges(i+1);
+            current_phase = phase(idx);
 
+            % 计算相位在-0.5到0.5之间的点数比例作为密度
+            num_points_in_range = sum(current_phase >= phase_range(1) & current_phase <= phase_range(2));
+            total_points = length(current_phase);
+
+            if total_points > 0
+                phase_density(i) = num_points_in_range / total_points;
+            else
+                phase_density(i) = 0;
+            end
+        end
+
+        % % 绘制相位密度图
+        subplot(4,1,3);
+        plot(freq_centers, phase_density, 'o', 'LineWidth', 2);
+
+        % 获取所有密度在0.05以下的频率区间的范围
+        low_density_threshold = 0.1;%%%%%%%%%%%%%%%%%%%%%%相位密度,中间空的地方就是有相变
+        low_density_ranges = [];
+
+        for i = 1:num_bins
+            if phase_density(i) < low_density_threshold
+                low_density_ranges = [low_density_ranges; freq_edges(i), freq_edges(i+1)];
+            end
+        end
         %% 使用findpeak函数寻找峰值
         % subplot(4,1,4);
         % 
@@ -107,7 +106,6 @@ function Research_Mode(blade,EO)
         %     y_rect = [min(magn), min(magn), max(magn), max(magn)];
         %     fill(x_rect, y_rect, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'DisplayName', 'Low Density Region for peak');
         % end
-
         %% 将两个办法结合在一起筛选
         % % 筛选在低密度范围内的峰值
         % selected_pks = [];

@@ -20,7 +20,8 @@ for k = 1:size(datasets, 1)
 
         % Research_NoiseReduction_v1(blade_sets{i}, EO(i));
         % Research_NoiseReduction_v2(blade_sets{i}, EO(i));
-        Research_Mode(blade_sets{i}, EO(i));
+        % Research_Mode(blade_sets{i}, EO(i));
+        Research_FindPeak(blade_sets{i}, EO(i));
     end
 end
 
