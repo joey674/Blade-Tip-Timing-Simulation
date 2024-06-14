@@ -125,7 +125,7 @@ function Research_FindPeak(blade, EO)
         phase = [blade_data.phase];
         err = [blade_data.err]; 
         magn = smoothdata(magn, 'rlowess', 200); 
-
+    
         %% 根据所有叶片的相似模态形状寻找峰值 
         %{
             set parameters
@@ -136,13 +136,13 @@ function Research_FindPeak(blade, EO)
         min_peak_prominence = 0.01 * (max(magn) - mean(err));
         disp(['Min Peak Height: ', num2str(min_peak_height)]);
         peaks = struct('magn', {}, 'freq', {}, 'prominences', {}, 'widths', {});
-
+    
         %{
             find peak
             % 获取当前模态区间
             % 找到区间内的峰值,先使用matlab的findpeak找通用的峰值而不是找最
             大值 相当于第一层小小的筛选
-            % 选择最大的峰值，并找到其左右波谷
+            % 找到其左右波谷:左边的波谷在前一个区间的尾部到当前区间的头部之间,否则右边的波谷在当前区间的尾部到下一个区间的头部之间
             % 判断是否满足突出度 (prominence) 条件:左右都要和最小的波谷进行
             比较,左右两边都满足
             % 更新 peaks 结构体数组，包含 magn, freq, prominences, 和 widths
@@ -150,39 +150,53 @@ function Research_FindPeak(blade, EO)
         for i = 1:n_modes 
             interval = peak_intervals(i, :);
             disp(['Interval: [', num2str(interval(1)), ', ', num2str(interval(2)), ']']);
-
+    
             in_interval = (freq >= interval(1)) & (freq <= interval(2));
             interval_freq = freq(in_interval);
             interval_magn = magn(in_interval);
-
+    
             [pks, locs] = findpeaks(interval_magn, interval_freq);          
             if isempty(pks)
                 disp('No peaks found that meet the specified criteria.');
                 continue;
             end
-
+    
             found_peak = false;
             for attempt = 1:1
                 [~, max_idx] = max(pks);
                 new_peak.magn = pks(max_idx);
                 new_peak.freq = locs(max_idx);
                 disp(['Max peak at frequency: ', num2str(new_peak.freq), ' with magnitude: ', num2str(new_peak.magn)]);
-
-                left_trough_magn = min(interval_magn(interval_freq < new_peak.freq));
-                right_trough_magn = min(interval_magn(interval_freq > new_peak.freq));
-
+    
+                % 寻找波谷
+                if i == 1
+                    left_trough_magn = min(magn(freq < new_peak.freq));
+                else
+                    
+                    prev_interval_end = peak_intervals(i-1, 2);
+                    left_trough_magn = min(magn((freq > prev_interval_end) & (freq < new_peak.freq)));
+                end
+    
+                if i == n_modes
+                    right_trough_magn = min(magn(freq > new_peak.freq));
+                else
+                    
+                    next_interval_start = peak_intervals(i+1, 1);
+                    right_trough_magn = min(magn((freq > new_peak.freq) & (freq < next_interval_start)));
+                end
+    
                 if (new_peak.magn - left_trough_magn > min_peak_prominence) && ...
                    (new_peak.magn - right_trough_magn > min_peak_prominence) && ...
                    (new_peak.magn > min_peak_height)
                     new_peak.prominences = max(new_peak.magn - left_trough_magn, new_peak.magn - right_trough_magn);
-                    left_trough_idx = find(interval_magn == left_trough_magn & interval_freq < new_peak.freq, 1, 'last');
-                    right_trough_idx = find(interval_magn == right_trough_magn & interval_freq > new_peak.freq, 1, 'first');
-                    new_peak.widths = interval_freq(right_trough_idx) - interval_freq(left_trough_idx);
+                    left_trough_idx = find(magn == left_trough_magn & freq < new_peak.freq, 1, 'last');
+                    right_trough_idx = find(magn == right_trough_magn & freq > new_peak.freq, 1, 'first');
+                    new_peak.widths = freq(right_trough_idx) - freq(left_trough_idx);
                     peaks = [peaks, new_peak];
                     found_peak = true;
                     break;
                 end
-
+    
                 pks(max_idx) = [];
                 locs(max_idx) = [];
                 if isempty(pks)
@@ -190,13 +204,11 @@ function Research_FindPeak(blade, EO)
                     break;
                 end
             end
-            if ~found_peak
+            if found_peak == false
                 disp('No valid peaks found in this interval.');
             end
         end
-
-
-
+    
         %{
             plot
         %}
@@ -210,15 +222,16 @@ function Research_FindPeak(blade, EO)
         for j = 1:length(peaks)
             plot(peaks(j).freq, peaks(j).magn, 'ro', 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Peak');
             text(peaks(j).freq, peaks(j).magn, sprintf('F:%.2f\n M: %.2f\n P: %.2f\n W: %.2f', ...
-                peaks(j).freq,peaks(j).magn, peaks(j).prominences, peaks(j).widths), ...
+                peaks(j).freq, peaks(j).magn, peaks(j).prominences, peaks(j).widths), ...
                 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
         end
         hold off;
-
+    
         %{ 
             获得结果数组
         %}
         peaks_all(blade_idx).peaks = peaks;
+
 
 
         %% 使用相位密度寻找峰值
