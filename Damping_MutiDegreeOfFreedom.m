@@ -20,7 +20,7 @@ function Damping_MutiDegreeOfFreedom(blade,EO)
         err  = [blade_data.err]; 
        
         figure('units', 'normalized', 'outerposition', [0 0 1 1]);set(gcf, 'WindowStyle', 'docked');
-        title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency (Hz)');ylabel('Magnitude (mm)');
+        title(sprintf('EO%d, blade%d', EO, blade_idx));xlabel('Frequency ');ylabel('Magnitude ');
         hold on;
         legend;
        
