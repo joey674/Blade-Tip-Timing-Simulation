@@ -1,33 +1,35 @@
-function Research_FindPeak(blade, EO)
+function Research_FindPeakAutomatic(blade, EO)
     %{
         init params
     %}
     n_blades = length(blade);
-
+                                                 
     %{
-        find peaks interval
-        先计算所有叶片数据合并在一起,然后归一化
-        再计算每一个freq点的最大值
-        观测整体的模态 这个图会显示出所有可能的模态
-        高度平滑 用来查找适中的interval 
+        find mode interval
+        % 先计算所有叶片数据合并在一起;这里不归一化,虽然会有大数据罩住小数据的问题,但是如果归一化的话如果有一个纯噪音数据对整个模型的影响很大; 噪声会直接浮在整个归一化的图的上半部分
+        % 再计算每一个freq点的最大值
+        % 观测整体的模态 这个图会显示出所有可能的模态
+        % 这里最后觉得先不高度平滑 不然有些模态会直接被抹除; 但是我还是想稍微平滑一点
     %}
     for i = 1:n_blades
         lens(i) = length([blade{i}.magn]);
     end
     magn_all = NaN(max(lens), n_blades);
     for i = 1:n_blades
-        magn_all(1:length([blade{i}.magn]), i) = [blade{i}.magn] ./ max([blade{i}.magn]);
+        magn = smoothdata([blade{i}.magn], 'gaussian', 1000); 
+        magn_all(1:length([blade{i}.magn]), i) = magn;
     end
     magn_max = max(magn_all, [], 2, "omitnan");
-    magn_max = smoothdata(magn_max, 'gaussian', 2000); 
+    % magn_max = smoothdata(magn_max, 'gaussian', 500); 
 
-    %{
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %{ 
         set parameter
         先用blade1的freq作为总共的freq 因为所有freq都一样
     %}
     freq = [blade{1}.freq]; 
     min_peak_prominence = 0.1 * (max(magn_max) - mean(magn_max)); 
-    min_peak_height = 0.1 * (max(magn_max) - mean(magn_max)) + mean(magn_max); 
+    min_peak_height = 0.05 * (max(magn_max) - mean(magn_max)) + mean(magn_max); 
     min_peak_interval_width = 16;
     n_peaks = 10;   
     min_peak_prominence_tro = 0.01 * (max(magn_max) - mean(magn_max)); 
@@ -120,153 +122,117 @@ function Research_FindPeak(blade, EO)
     clearvars -except blade EO n_blades n_modes peak_intervals peak_freqs
 
 
-%% 对每个叶片执行寻找峰值策略
-peaks_all(n_blades) = struct('peaks', struct('magn', {}, 'freq', {}, 'prominences', {}, 'widths', {}));
-for blade_idx = 1:n_blades
-    %{
-        init and smooth
-        平滑方式先用rlowess 之后修改成写好的自制方法
-    %}
-    disp(['blade:', num2str(blade_idx)]); 
-    blade_data = blade{blade_idx};
-    freq = [blade_data.freq];
-    magn = [blade_data.magn];
-    phase = [blade_data.phase];
-    err = [blade_data.err]; 
-    magn = smoothdata(magn, 'rlowess', 200); 
+    %% 对每个叶片执行寻找峰值策略
+    peaks_all(n_blades) = struct('peaks', struct('magn', {}, 'freq', {}, 'prominences', {}, 'widths', {}));
+    for blade_idx = 1:n_blades
+        %{
+            init and smooth
+            平滑方式先用rlowess 之后修改成写好的自制方法
+        %}
+        blade_data = blade{blade_idx};
+        freq = [blade_data.freq];
+        magn = [blade_data.magn];
+        phase = [blade_data.phase];
+        err = [blade_data.err]; 
+        magn = MDOF_ReduceNoise(magn, freq, err); 
 
-    %% 根据所有叶片的相似模态形状寻找峰值 
-    %{
-        % set parameters
-        这里由于没有过度平滑 所以这里的findpeak获得的参数prominence和width都没有意义 会被噪音干扰
-    %}  
-    peaks = struct('magn', {}, 'freq', {});
-    
-    %{
-        % find peak
-        % 对magn过度平滑, 寻找峰值
-        % 判断峰值是否存在于模态区间内;如果存在则这个模态存在,记录这个模态区间
-        % 对没有过度平滑的magn在此区间求最大值,记录freq
-        % 更新 peaks 结构体数组，包含 magn, freq
-    %}
-    magn_oversmoothed = smoothdata(magn, 'gaussian', 1000); 
-    min_peak_prominence = 0.03 * (max(magn_oversmoothed) - mean(magn_oversmoothed)); 
-    min_peak_height = 0.1 * (max(magn_oversmoothed) - mean(magn_oversmoothed)) + mean(magn_oversmoothed); 
-    n_peaks = 10;   
-    [pks, locs, widths, prominences] = findpeaks(magn_oversmoothed, freq, ...
-        'MinPeakProminence', min_peak_prominence, ...
-        'MinPeakHeight', min_peak_height, ...
-        'NPeaks', n_peaks...
-    );
+        %% 根据所有叶片的相似模态形状寻找峰值 
+        %{
+            % set parameters
+            这里由于没有过度平滑 所以这里的findpeak获得的参数prominence和width都没有意义 会被噪音干扰
+        %}  
+        peaks = struct('magn', {}, 'freq', {},'idx',{});
 
-    %{
-        % 检查过度平滑的峰值是否在模态区间内
-        % 在未平滑的magn中找到该区间的最大值
-        % 对应subplot1->subplot2
-    %}
-    for i = 1:n_modes
-        interval = peak_intervals(i, :);
-        disp(['Interval: [', num2str(interval(1)), ', ', num2str(interval(2)), ']']);
-        
-        in_interval = (locs >= interval(1)) & (locs <= interval(2));
-        interval_locs = locs(in_interval);
-        interval_pks = pks(in_interval);
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %{
+            % find peak
+            % 对magn过度平滑, 寻找峰值
+            % 判断峰值是否存在于模态区间内;如果存在则这个模态存在,记录这个模态区间
+            % 对没有过度平滑的magn在此区间求最大值,记录freq
+            % 更新 peaks 结构体数组，包含 magn, freq
+        %}
+        magn_oversmoothed = smoothdata(magn, 'gaussian', 1000); 
+        min_peak_prominence = 0.03 * (max(magn_oversmoothed) - mean(magn_oversmoothed)); 
+        min_peak_height = 0.06 * (max(magn_oversmoothed) - mean(magn_oversmoothed)) + mean(magn_oversmoothed); 
+        [pks, locs, widths, prominences] = findpeaks(magn_oversmoothed, freq, ...
+            'MinPeakProminence', min_peak_prominence, ...
+            'MinPeakHeight', min_peak_height ...
+        );
 
-        if isempty(interval_pks)
-            disp('No peaks found in this interval.');
-            continue;
+        %{
+            % 检查过度平滑的峰值是否在模态区间内
+            % 在未平滑的magn中找到该区间的最大值
+            % 对应subplot1->subplot2
+        %}
+        for i = 1:n_modes
+            interval = peak_intervals(i, :);
+            disp(['Interval: [', num2str(interval(1)), ', ', num2str(interval(2)), ']']);
+
+            in_interval = (locs >= interval(1)) & (locs <= interval(2));
+            interval_locs = locs(in_interval);
+            interval_pks = pks(in_interval);
+
+            if isempty(interval_pks)
+                disp('No peaks found in this interval.');
+                continue;
+            end
+
+            in_interval_original = (freq >= interval(1)) & (freq <= interval(2));
+            interval_freq = freq(in_interval_original);
+            interval_magn = magn(in_interval_original);
+            [max_magn, max_idx] = max(interval_magn);
+            max_freq = interval_freq(max_idx);
+
+            new_peak.magn = max_magn;
+            new_peak.freq = max_freq;
+            new_peak.idx = find(max_freq == freq);
+            peaks = [peaks, new_peak];
         end
 
-        in_interval_original = (freq >= interval(1)) & (freq <= interval(2));
-        interval_freq = freq(in_interval_original);
-        interval_magn = magn(in_interval_original);
-        [max_magn, max_idx] = max(interval_magn);
-        max_freq = interval_freq(max_idx);
+        %{
+            plot
+            % 对于每个blade绘制三个图:
+            % subplot1是过度平滑的magn 并标注出峰值;
+            % subplot2是原magn,并标注出记录的峰值
+            % subplot3是最终确定的峰值
+        %}
+        figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
+        set(gcf, 'WindowStyle', 'docked');
 
-        new_peak.magn = max_magn;
-        new_peak.freq = max_freq;
-        peaks = [peaks, new_peak];
-    end
 
-    %{
-        比较精确峰值与模态中的峰值
-        如果找不到相近的模态峰值，则删除该峰值
-        % 对应subplot2->subplot3
-    %}
-    freq_diff_threshold = 4;
-    final_peaks = struct('magn', {}, 'freq', {});
-    for j = 1:length(peaks)
-        peak_freq = peaks(j).freq;
-        % 找到与peak_freq最接近的模态频率
-        [min_diff, idx] = min(abs(peak_freqs - peak_freq));
-        if min_diff < freq_diff_threshold % 设置阈值判断是否接近
-            final_peaks = [final_peaks, peaks(j)];
+        subplot(2, 1, 1);
+        plot(freq, magn_oversmoothed, 'Color', [0.7, 0.9, 1.0]);
+        hold on;
+        plot(locs, pks, 'ro', 'MarkerFaceColor', 'r', 'DisplayName', 'Detected Peak');
+        for j = 1:length(locs)
+            text(locs(j), pks(j), sprintf('P: %.2f\nW: %.2f', prominences(j), widths(j)), ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
         end
-    end
+        title(sprintf('EO%d blade%d - Oversmoothed with all found peaks', EO, blade_idx));
+        xlabel('Frequency');
+        ylabel('Magnitude');
+        legend('show');
+        hold off;
 
-    %{
-        plot
-        % 对于每个blade绘制三个图: subplot1是过度平滑的magn 并标注出峰值;
-        % subplot2是原magn,并标注出记录的峰值
-        % subplot3是最终确定的峰值
-    %}
-    figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
-    set(gcf, 'WindowStyle', 'docked');
+        subplot(2, 1, 2);
+        plot(freq, magn, 'Color', [0.7, 0.9, 1.0], 'DisplayName', 'checked with mode plot');
+        hold on;
+        for j = 1:length(peaks)
+            plot(peaks(j).freq, peaks(j).magn, 'ro', 'MarkerFaceColor', 'r');
+            text(peaks(j).freq, peaks(j).magn, sprintf('F:%.2f\n M: %.2f', ...
+                peaks(j).freq, peaks(j).magn), ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+        end
+        title(sprintf('EO%d blade%d - checked with mode plot', EO, blade_idx));
+        xlabel('Frequency');
+        ylabel('Magnitude');
+        legend('show');
+        hold off;
 
-    % Subplot 1: 过度平滑的magn并标注出峰值
-    subplot(3, 1, 1);
-    plot(freq, magn_oversmoothed, 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Oversmoothed Magnitude');
-    hold on;
-    plot(locs, pks, 'ro', 'MarkerFaceColor', 'r', 'DisplayName', 'Detected Peak');
-    for j = 1:length(locs)
-        % 标注prominence和width
-        text(locs(j), pks(j), sprintf('P: %.2f\nW: %.2f', prominences(j), widths(j)), ...
-            'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-    end
-    title(sprintf('EO%d blade%d - Oversmoothed', EO, blade_idx));
-    xlabel('Frequency');
-    ylabel('Magnitude');
-    legend('show');
-    hold off;
-
-    % Subplot 2: 原始magn并标注出记录的峰值
-    subplot(3, 1, 2);
-    plot(freq, magn, 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Original Magnitude');
-    hold on;
-    for j = 1:length(peaks)
-        plot(peaks(j).freq, peaks(j).magn, 'ro', 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Peak');
-        text(peaks(j).freq, peaks(j).magn, sprintf('F:%.2f\n M: %.2f', ...
-            peaks(j).freq, peaks(j).magn), ...
-            'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-    end
-    title(sprintf('EO%d blade%d - Original', EO, blade_idx));
-    xlabel('Frequency');
-    ylabel('Magnitude');
-    legend('show');
-    hold off;
-
-    % Subplot 3: 最终确定的峰值
-    subplot(3, 1, 3);
-    plot(freq, magn, 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Original Magnitude');
-    hold on;
-    for j = 1:length(final_peaks)
-        plot(final_peaks(j).freq, final_peaks(j).magn, 'ro', 'MarkerFaceColor', 'r', 'DisplayName', 'Final Peak');
-        text(final_peaks(j).freq, final_peaks(j).magn, sprintf('F:%.2f\n M: %.2f', ...
-            final_peaks(j).freq, final_peaks(j).magn), ...
-            'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-    end
-    title(sprintf('EO%d blade%d - Final Peaks', EO, blade_idx));
-    xlabel('Frequency');
-    ylabel('Magnitude');
-    legend('show');
-    hold off;
-
-    %{ 
-        获得结果数组
-    %}
-    peaks_all(blade_idx).peaks = final_peaks;
-
-
+        %{ 
+            获得结果数组
+        %}
+        peaks_all(blade_idx).peaks = peaks;
 
         %% 使用相位密度寻找峰值
         % figure('units', 'normalized', 'outerposition', [0 0 1 1]);set(gcf, 'WindowStyle', 'docked');
@@ -275,16 +241,12 @@ for blade_idx = 1:n_blades
         % legend;  
         % 
         % subplot(4,1,1);
-        % plot(freq, magn,'o','Color', [0.8, 0.9, 1.0]);  hold on;
-        % plot(freq, smoothdata(magn,'rlowess',200),'o');  
-        % 
-        % subplot(4,1,2);
         % plot(freq, phase,'o','Color', [0.8, 0.9, 1.0]);  
         % 
         % % 定义频率范围和区间数
-        % num_bins = 50;  %%%%%%%%%%%%%%%%%%%% 区间精度,分得越多得到的范围越精细
+        % num_bins = 100;  %%%%%%%%%%%%%%%%%%%% 区间精度,分得越多得到的范围越精细
         % freq_edges = linspace(min(freq), max(freq), num_bins + 1);
-        % phase_range = [-0.2, 0.2]; %%%%%%%%%%%%%%%%% 相位范围
+        % phase_range = [-0.5, 0.5]; %%%%%%%%%%%%%%%%% 相位范围
         % 
         % % 初始化密度数组
         % phase_density = zeros(1, num_bins);
@@ -308,10 +270,10 @@ for blade_idx = 1:n_blades
         % end
         % 
         % % % 绘制相位密度图
-        % subplot(4,1,3);
+        % subplot(4,1,2);
         % plot(freq_centers, phase_density, 'o', 'LineWidth', 2);
         % 
-        % % 获取所有密度在0.05以下的频率区间的范围
+        % % 获取所有密度在threshold以下的频率区间的范围
         % low_density_threshold = 0.1;%%%%%%%%%%%%%%%%%%%%%%相位密度,中间空的地方就是有相变
         % low_density_ranges = [];
         % 
@@ -320,8 +282,8 @@ for blade_idx = 1:n_blades
         %         low_density_ranges = [low_density_ranges; freq_edges(i), freq_edges(i+1)];
         %     end
         % end
-        %% 使用findpeak函数寻找峰值
-        % subplot(4,1,4);
+        % 
+        % subplot(4,1,3);
         % 
         % % 降噪
         % magn = Damping_NoiseFilter(magn);
@@ -331,7 +293,7 @@ for blade_idx = 1:n_blades
         % min_prominence = 1/4*mean(magn);%%%%%%%%%%%%%%%%%%%%%峰值的显著性 这个值可以小一点,多收入一些peak
         % min_peakdistance = 1/30*(max(freq)-min(freq));%%%%%%%%%%%%%%%%%%峰值之间的距离 这个值可以设置得大一些,避免peak挤在一起
         % [pks, locs] = findpeaks(magn, freq, 'MinPeakProminence', min_prominence,'MinPeakDistance',min_peakdistance);
-        % plot(locs, pks, 'o', 'DisplayName', 'Peaks through findpeak');
+        % % plot(locs, pks, 'o', 'DisplayName', 'Peaks through findpeak');
         % 
         % %
         % % 标注低密度频率区间(峰值所在区间)
@@ -340,7 +302,7 @@ for blade_idx = 1:n_blades
         %     y_rect = [min(magn), min(magn), max(magn), max(magn)];
         %     fill(x_rect, y_rect, 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'DisplayName', 'Low Density Region for peak');
         % end
-        %% 将两个办法结合在一起筛选
+        % 
         % % 筛选在低密度范围内的峰值
         % selected_pks = [];
         % selected_locs = [];

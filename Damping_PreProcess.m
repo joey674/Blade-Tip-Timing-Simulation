@@ -18,11 +18,11 @@ function blade = Damping_PreProcess(EO,data,n_blades)
                 Phase{j} = data.P_Phase{j,EO(1)}; 
                 Err{j} = data.Fit_Error{j,EO(1)};               
             end
-            % EO 8/20
+            % EO 20,8
             if length(EO) == 2 
-                Magn{j} = data.P_Magn{j,EO(2),EO(1)}(:,i);  
-                Phase{j} = data.P_Phase{j,EO(2),EO(1)}(:,i);  
-                Err{j} = data.Fit_Error{j,EO(2),EO(1)}; 
+                Magn{j} = data.P_Magn{j,EO(1),EO(2)}(:,i);  
+                Phase{j} = data.P_Phase{j,EO(1),EO(2)}(:,i);  
+                Err{j} = data.Fit_Error{j,EO(1),EO(2)}; 
             end                       
         end 
 
