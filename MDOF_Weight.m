@@ -28,9 +28,22 @@ function weights_idx = MDOF_Weight(magn, selected_peaks_idx)
             right_valley = length(magn); % 如果没有右边波谷，设为数据的最后一个点
         end
 
+        % 排除跨界的问题
+        if i>1
+            if left_valley < selected_peaks_idx(i-1)
+                left_valley = selected_peaks_idx(i-1);
+            end
+        end
+        if i<length(selected_peaks_idx)
+            if right_valley > selected_peaks_idx(i+1)
+                right_valley = selected_peaks_idx(i+1);
+            end
+        end
+
         % 记录左右波谷的索引
         weights_idx(i, :) = [left_valley, right_valley];
     end
+    disp(weights_idx);
 end
 
 

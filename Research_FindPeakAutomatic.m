@@ -159,11 +159,13 @@ function Research_FindPeakAutomatic(blade, EO)
             'MinPeakHeight', min_peak_height ...
         );
 
+
         %{
-            % 检查过度平滑的峰值是否在模态区间内
-            % 在未平滑的magn中找到该区间的最大值
-            % 对应subplot1->subplot2
+            % 现在开始遍历所有记录的模态区间,在未平滑的magn中找到该区间的最大值
+            % 比较精确峰值与模态中的峰值,设置阈值判断是否接近如果找不到相近的模态
+            峰值，则删除该峰值
         %}
+        freq_diff_threshold = 2;
         for i = 1:n_modes
             interval = peak_intervals(i, :);
             disp(['Interval: [', num2str(interval(1)), ', ', num2str(interval(2)), ']']);
@@ -182,11 +184,14 @@ function Research_FindPeakAutomatic(blade, EO)
             interval_magn = magn(in_interval_original);
             [max_magn, max_idx] = max(interval_magn);
             max_freq = interval_freq(max_idx);
-
-            new_peak.magn = max_magn;
-            new_peak.freq = max_freq;
-            new_peak.idx = find(max_freq == freq);
-            peaks = [peaks, new_peak];
+            
+            [min_diff, idx] = min(abs(peak_freqs(i) - max_freq));
+            if min_diff < freq_diff_threshold 
+                new_peak.magn = max_magn;
+                new_peak.freq = max_freq;
+                new_peak.idx = find(max_freq == freq);
+                peaks = [peaks, new_peak];
+            end 
         end
 
         %{

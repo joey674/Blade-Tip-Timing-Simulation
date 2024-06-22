@@ -63,7 +63,7 @@ function magn_smoothed = MDOF_ReduceNoise(magn, freq, err)
     end
 
     %% 先平滑数据
-    magn_downsampled = smoothdata(magn_downsampled, 'gaussian', 200);
+    magn_downsampled = smoothdata(magn_downsampled, 'sgolay', 200);
         
     %% 插值以恢复数据长度
     magn_interpolated = interp1(freq_downsampled, magn_downsampled, freq, 'linear', 'extrap');
