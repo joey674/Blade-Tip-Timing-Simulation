@@ -48,7 +48,7 @@ function Damping_MutiDegreeOfFreedom(blade, EO)
         weights_idx = MDOF_Weight(magn, peaks_idx);
 
         %% set boundary
-        boundary_idx = MDOF_Bound(magn, peaks_idx);
+        boundary_idx = [weights_idx(1,1),weights_idx(end,end)];
     
         %% cut unneeded part to plot and simulate
         [freq_cut, magn_cut, weights_idx_cut, peaks_idx_cut] = MDOF_SetBoundary(freq, magn, peaks_idx, weights_idx, boundary_idx);

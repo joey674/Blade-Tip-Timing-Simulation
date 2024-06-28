@@ -90,7 +90,7 @@ function Research_FindPeakAutomatic(blade, EO)
         plot
     %}
     figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
-    title(sprintf('General Magnitude plot EO%d', EO));
+    title(sprintf('EO%d', EO));
     xlabel('Frequency ');
     ylabel('Magnitude ');
     set(gcf, 'WindowStyle');

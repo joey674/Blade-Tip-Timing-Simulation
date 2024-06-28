@@ -22,7 +22,7 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
     end
 
     %% set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
-    deviation_peaks_idx = 1;
+    deviation_freq = 2;
     params_initial = zeros(1, n_modes*4);
     lb = [];ub = [];
     for i = 1:n_modes 
@@ -31,11 +31,11 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
         % r_re does matters and must set to magn_each_blade_smoothed(peaks_locs(i)),r_im is not that important
         params_initial((i-1)*4 + 3) = magn(peaks_idx(i));
         params_initial((i-1)*4 + 4) = 100;
-        lb_s = [freq(peaks_idx(i))-deviation_peaks_idx, 0, -Inf, -Inf];
-        ub_s = [freq(peaks_idx(i))+deviation_peaks_idx, 0.01, Inf, Inf];
+        lb_s = [freq(peaks_idx(i))-deviation_freq, 0, -Inf, -Inf];
+        ub_s = [freq(peaks_idx(i))+deviation_freq, 0.1, Inf, Inf];
         lb = [lb,lb_s];
         ub = [ub,ub_s];
-    end    
+    end   
 
     % set lsqnonlin use levenberg-marquardt algorithm
     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
