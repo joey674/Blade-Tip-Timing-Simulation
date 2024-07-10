@@ -1,4 +1,4 @@
-function peaks_all = MDOF_FindPeakAutomatic(blade)
+function peaks_all = FindPeakAutomatic(blade)
     %{
         init params
     %}
@@ -108,7 +108,7 @@ function peaks_all = MDOF_FindPeakAutomatic(blade)
         magn = [blade_data.magn];
         phase = [blade_data.phase];
         err = [blade_data.err]; 
-        magn = MDOF_ReduceNoise(magn, freq, err); 
+        magn = ReduceNoise(magn, freq, err); 
 
         %% 根据所有叶片的相似模态形状寻找峰值 
         %{

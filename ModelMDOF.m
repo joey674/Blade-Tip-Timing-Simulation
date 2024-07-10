@@ -1,5 +1,5 @@
 %% Model of MDOF(to calculate magn) Model 1
-function H_kl = MDOF_Model(P, w)
+function H_kl = ModelMDOF(P, w)
     % cut the input back to n_modes vectors
     n_modes = length(P) / 4;
     ParVecArray = cell(1, n_modes);
@@ -20,7 +20,7 @@ function H_kl = MDOF_Model(P, w)
 end
 
 %% Model of MDOF(to calculate magn) Model 2
-% function H_kl = MDOF_Model(P, w)
+% function H_kl = MDOFModel(P, w)
 %     % cut the input back to n_modes vectors
 %     n_modes = length(P) / 3;
 %     ParVecArray = cell(1, n_modes);

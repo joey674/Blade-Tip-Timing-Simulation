@@ -1,4 +1,4 @@
-function weights_idx = MDOF_Weight(magn, selected_peaks_idx)
+function weights_idx = Weight(magn, selected_peaks_idx)
     % 对数据高度平滑以找到波谷
     magn_oversmoothed = smoothdata(magn, 'gaussian', 2000);
     

@@ -1,7 +1,7 @@
-% MDOF_LMAlgorithm 
+% LMAlgorithm 
 
 %% Model 1
-function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx) 
+function params_fitted = LMAlgorithmMDOF(freq,magn,peaks_idx,weights_idx) 
     n_modes = length(peaks_idx);
 
     %% weights
@@ -40,12 +40,12 @@ function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx)
     % set lsqnonlin use levenberg-marquardt algorithm
     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
         'MaxIterations', 1000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
-    residual = @(P) weights .* ( abs(MDOF_Model(P,freq)) - magn ).^2;
+    residual = @(P) weights .* ( abs(ModelMDOF(P,freq)) - magn ).^2;
     params_fitted = lsqnonlin(residual, params_initial, lb, ub, options);   
 end
 
 %% Model 2
-% function params_fitted = MDOF_LMAlgorithm(freq,magn,peaks_idx,weights_idx) 
+% function params_fitted = LMAlgorithm(freq,magn,peaks_idx,weights_idx) 
 %     %% calculate significant mode number for this balde
 %     n_modes = length(peaks_idx);
 % 
@@ -83,7 +83,7 @@ end
 %     % set lsqnonlin use levenberg-marquardt algorithm
 %     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
 %         'MaxIterations', 1000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
-%     residual = @(P) weights .* ( abs(MDOF_Model(P,freq)) - magn ).^2;
+%     residual = @(P) weights .* ( abs(MDOFModel(P,freq)) - magn ).^2;
 %     params_fitted = lsqnonlin(residual, params_initial, lb, ub, options);   
 % end
 % 

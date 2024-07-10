@@ -1,4 +1,4 @@
-function [fig, peaks_idx] = MDOF_FindPeakManual(fig, freq, magn, peaks_idx)
+function [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx)
     figure(fig); 
     hold on;
 

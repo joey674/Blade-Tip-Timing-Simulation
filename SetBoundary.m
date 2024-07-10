@@ -15,7 +15,7 @@
 %   overflow, will be cut to boundary)
 
 
-function [freq,magn,weights_idx,peaks_idx] = MDOF_SetBoundary(freq,magn,peaks_idx,weights_idx,boundary_idx)
+function [freq,magn,weights_idx,peaks_idx] = SetBoundary(freq,magn,peaks_idx,weights_idx,boundary_idx)
     if ~isempty(peaks_idx)
         valid_idx = boundary_idx(1):boundary_idx(2);
 
