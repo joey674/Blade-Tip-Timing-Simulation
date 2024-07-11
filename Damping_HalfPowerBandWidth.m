@@ -5,7 +5,7 @@ function Damping_HalfPowerBandWidth(blade,EO)
     n_blades = length(blade);
 
     %% get peaks_idx    
-    peaks_idx_all = MDOF_FindPeakAutomatic(blade);
+    peaks_idx_all = FindPeakAutomatic(blade);
 
     %% deal every blades
     for blade_idx = 1:n_blades 
@@ -24,7 +24,7 @@ function Damping_HalfPowerBandWidth(blade,EO)
 
         
         %% reduce noise and downsample
-        magn = MDOF_ReduceNoise(magn, freq, err);
+        magn = ReduceNoise(magn, freq, err);
         err = smoothdata(err, 'movmean', 200);
 
         %% subplot: Magnitude
@@ -37,7 +37,7 @@ function Damping_HalfPowerBandWidth(blade,EO)
 
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
-        % [fig, peaks_idx] = MDOF_FindPeakManual(fig, freq, magn, peaks_idx);
+        [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx);
         peaks_idx = sort(peaks_idx);
         if isempty(peaks_idx) 
             disp('ERROR: can not find peaks for this blade, will skip this blade.');
