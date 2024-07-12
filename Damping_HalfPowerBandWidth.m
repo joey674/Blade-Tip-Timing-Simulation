@@ -33,7 +33,6 @@ function Damping_HalfPowerBandWidth(blade,EO)
         plot(freq, err, 'o', 'Color', [1.0, 0.8, 0.8], 'DisplayName', 'Error');  
         xlabel('Frequency');
         ylabel('Magnitude');
-        legend;
 
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
