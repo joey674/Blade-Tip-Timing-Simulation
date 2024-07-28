@@ -91,6 +91,7 @@ function Research_FindPeakAutomatic(blade, EO)
     %}
     fig = figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
     title(sprintf('EO%d', EO));
+    xlim([13600 13900]);
     xlabel('Frequency ');
     ylabel('Magnitude ');
     set(gcf, 'WindowStyle');
@@ -115,7 +116,6 @@ function Research_FindPeakAutomatic(blade, EO)
 
     %% Save the figure
     saveas(fig, sprintf('mode_EO%d.png',EO));
-
     peak_freqs = locs;
     
     %{

@@ -102,6 +102,7 @@ function peaks_all = FindPeakAutomatic(blade)
             init and smooth
             平滑方式先用rlowess 之后修改成写好的自制方法
         %}
+        disp([' ']);
         disp(['blade:', num2str(blade_idx)]); 
         blade_data = blade{blade_idx};
         freq = [blade_data.freq];

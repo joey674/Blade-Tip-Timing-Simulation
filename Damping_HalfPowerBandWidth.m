@@ -61,8 +61,8 @@ function Damping_HalfPowerBandWidth(blade,EO)
             damping_ratio(j) = (f2 - f1) / (2 * freq(peaks_idx(j)));
             
             % plot peak and half power points
-            plot(freq(peaks_idx(j)), peaks_y(j), 'ro', 'DisplayName', 'Peak');
-            plot([f1 f2], [peaks_y(j)/sqrt(2) peaks_y(j)/sqrt(2)], 'go', 'DisplayName', 'Half Power Point');
+            plot(freq(peaks_idx(j)), peaks_y(j), 'o', 'Color', 'r', 'MarkerFaceColor', 'r');
+            plot([f1 f2], [peaks_y(j)/sqrt(2) peaks_y(j)/sqrt(2)], 'o', 'Color', 'g', 'MarkerFaceColor', 'g');
         end    
 
         %% save to file 

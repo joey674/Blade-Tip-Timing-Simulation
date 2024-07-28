@@ -43,7 +43,7 @@ function weights_idx = Weight(magn, selected_peaks_idx)
         % 记录左右波谷的索引
         weights_idx(i, :) = [left_valley, right_valley];
     end
-    disp(weights_idx);
+    % disp(weights_idx);
 end
 
 

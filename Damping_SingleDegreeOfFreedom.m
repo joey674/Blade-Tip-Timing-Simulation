@@ -3,12 +3,13 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
     
     %% init params
     n_blades = length(blade);
+    quality_factor_vec = [];
 
     %% get peaks_idx    
     peaks_idx_all = FindPeakAutomatic(blade);
 
     %% deal every blades
-    for blade_idx = 1:n_blades 
+    for blade_idx = 1:12
         %% init
         fprintf('blade:%d\n',blade_idx); 
         blade_data = blade{blade_idx};
@@ -22,7 +23,6 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
         sgtitle(sprintf('EO%d, blade%d', EO, blade_idx));
         set(gcf, 'WindowStyle', 'docked');
 
-        
         %% reduce noise and downsample
         magn = ReduceNoise(magn, freq, err);
         err = smoothdata(err, 'movmean', 200);
@@ -36,7 +36,7 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
 
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
-        [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx);
+        [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx);%%%%%%%%%%%%%%%%%%%%% 手动打开的开关
         peaks_idx = sort(peaks_idx);
         if isempty(peaks_idx) 
             disp('ERROR: can not find peaks for this blade, will skip this blade.');
@@ -62,10 +62,17 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
             for i = 1:size(weights_idx_cut, 1)
                 startIdx = weights_idx_cut(i, 1);
                 endIdx = weights_idx_cut(i, 2); 
-                plot(freq_cut(startIdx:endIdx), abs(ModelSDOF(params_m, freq_cut(startIdx:endIdx))), 'o', 'Color', [0, 0.9, 0]);
+                plot(freq_cut(startIdx:endIdx), abs(ModelSDOF(params_m, freq_cut(startIdx:endIdx))), '-', 'Color', [0, 0.9, 0], 'LineWidth', 6, 'DisplayName', 'Weight Area');
             end
             excitate_freq(j) = params_m(1);
             damping_ratio(j) = params_m(2);
+
+            %% quality factor
+            quality_factor = 0;
+            quality_factor = abs(abs(ModelSDOF(params_m, freq_cut))-magn_cut);
+            quality_factor = sum(quality_factor) /length(magn_cut);
+            quality_factor = quality_factor / max(magn_cut);
+            quality_factor_vec = [quality_factor_vec,quality_factor];
         end
 
         %% save to file 
