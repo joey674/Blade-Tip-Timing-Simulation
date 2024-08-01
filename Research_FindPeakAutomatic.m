@@ -20,7 +20,7 @@ function Research_FindPeakAutomatic(blade, EO)
         magn_all(1:length([blade{i}.magn]), i) = magn;
     end
     magn_max = max(magn_all, [], 2, "omitnan");
-    % magn_max = smoothdata(magn_max, 'gaussian', 500); 
+    magn_max = magn_max/max(magn_max);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %{ 
@@ -91,27 +91,28 @@ function Research_FindPeakAutomatic(blade, EO)
     %}
     fig = figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
     title(sprintf('EO%d', EO));
-    xlim([13600 13900]);
+    xlim([13680 13880]);
     xlabel('Frequency ');
-    ylabel('Magnitude ');
+    ylabel('Amplitude ');
+    yticks([]);
     set(gcf, 'WindowStyle');
-    hold on;
-    plot(freq, magn_max, 'Color', [0, 0.4470, 0.7410], 'DisplayName', 'Magnitude');
-    plot(locs, pks, 'ro', 'DisplayName', 'Peaks');
-    plot(tro_locs, -tro_pks, 'bo', 'DisplayName', 'Troughs');
+    hold on
+    plot(freq, magn_max, 'Color', [0, 0.4470, 0.7410], 'DisplayName', 'Normalised Magnitude');
+    % plot(locs, pks, 'ro', 'DisplayName', 'Peaks');
+    % plot(tro_locs, -tro_pks, 'bo', 'DisplayName', 'Troughs');
     for i = 1:n_modes
         left_bound = peak_intervals(i, 1);
         right_bound = peak_intervals(i, 2);
         fill([left_bound, right_bound, right_bound, left_bound], ...
              [min(magn_max), min(magn_max), max(magn_max), max(magn_max)], ...
-             'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+             'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', DisplayName="Peak Area");
     end 
     for i = 1:n_modes
-        text(locs(i), pks(i), ...
-             sprintf('F:%.2f\n H:%.2f\n P:%.2f\n W:%.2f',locs(i), pks(i), prominences(i), peak_intervals(i, 2) - peak_intervals(i, 1)), ...
-             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
+        % text(locs(i), pks(i), ...
+        %      sprintf('F:%.2f\n H:%.2f\n P:%.2f\n W:%.2f',locs(i), pks(i), prominences(i), peak_intervals(i, 2) - peak_intervals(i, 1)), ...
+        %      'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
     end
-    legend('show');
+    % legend('show');
     hold off;
 
     %% Save the figure

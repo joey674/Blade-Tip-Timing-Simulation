@@ -21,20 +21,22 @@ function Damping_MutiDegreeOfFreedom(blade, EO,SetTag)
         %% Create figure and set it up
         fig = figure('units', 'normalized', 'outerposition', [0 0.25 1 0.5]);
         sgtitle(sprintf('EO%d %s blade%d', EO,SetTag,blade_idx));
-        % set(gcf, 'WindowStyle', 'docked');
+        set(gcf, 'WindowStyle', 'docked');
        
         %% reduce noise and downsample
         magn = ReduceNoise(magn, freq, err);
         err = smoothdata(err, 'movmean', 200);
+        phase = smoothdata(phase,'movmean',200);
 
         %% subplot 1: Magnitude
         % subplot(2, 1, 1);
         plot(freq, magn, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', ...
-            'Magnitude');  
+            'Amplitude');  
         hold on;
         plot(freq, err, 'o', 'Color', [1.0, 0.8, 0.8], 'DisplayName', 'Error');  
         xlabel('Frequency(Hz)');
-        ylabel('Magnitude(10^-6 m)');
+        ylabel('Normalized Amplitude');
+        
         
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
@@ -69,8 +71,8 @@ function Damping_MutiDegreeOfFreedom(blade, EO,SetTag)
                 freq_cut(startIdx:endIdx))),'-', 'Color', [0, 0.9, 0], ...
                 'LineWidth', 6, 'DisplayName', 'Weight Area');
         end
-        xlim([13680 13880]);                                                    %%%%%%%%%%%%%%%%%%%%%%%%%%%% 只适用于EO24!!
-        ylim([0,120]);
+        xlim([13680,13880]);                                             
+        % ylim([]);
         hold off;       
 
         %% quality factor
@@ -79,30 +81,20 @@ function Damping_MutiDegreeOfFreedom(blade, EO,SetTag)
         quality_factor = sum(quality_factor) /length(magn_cut);
         quality_factor = quality_factor / max(magn_cut);
         quality_factor_vec = [quality_factor_vec,quality_factor];
-        % fprintf("quality factor: %d",quality_factor);
+        fprintf("quality factor: %d",quality_factor);
 
         %% subplot 2: Phase
         % subplot(2, 1, 2); 
-        % xlabel('Frequency');
-        % ylabel('Phase');
+        % xlabel('Frequency(Hz)');
+        % ylabel('Phase(Rad)');
         % hold on;
+        % xlim([13650 13850]);                                                    %%%%%%%%%%%%%%%%%%%%%%%%%%%% 只适用于EO24!!
         % % from P_Phase
         % phase_from_data = rad2deg(phase);
-        % plot(freq, phase_from_data, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Phase from Data');
-        % % from model
-        % phase_from_model = atan(imag(ModelMDOF(params_m, freq_cut)) ./ real(ModelMDOF(params_m, freq_cut)));
-        % phase_from_model = rad2deg(phase_from_model);
-        % plot(freq_cut, phase_from_model, 'o', 'Color', [0, 0.9, 0], 'DisplayName', 'Phase from Model');
-        % line([freq(boundary_idx(1)), freq(boundary_idx(1))], [-150, 150], 'Color', 'red', 'LineStyle', '--', 'DisplayName', 'Left Boundary');
-        % line([freq(boundary_idx(2)), freq(boundary_idx(2))], [-150, 150], 'Color', 'red', 'LineStyle', '--', 'DisplayName', 'Right Boundary');   
-        % hold off;
+        % plot(freq, phase, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Phase from Data');
 
         %% save to file
         params_fitted{blade_idx} = reshape(params_m, 4, length(peaks_idx_cut)).';
-        % excitate_freq{blade_idx} = params_fitted{blade_idx}(:, 1).';
-        % damping_ratios{blade_idx} = params_fitted{blade_idx}(:, 2).'; 
-        % peaks_idx_magn{blade_idx} = peaks_idx;
-        % excitate_phase{blade_idx} = phase_from_model(peaks_idx_cut);
         result_filename_excel = fullfile('Result', sprintf('EO%d_MDOF_%s.xlsx', ...%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             EO,SetTag));
         T = table(params_fitted{blade_idx}(:, 1), params_fitted{blade_idx}(:, 2), ...
@@ -117,11 +109,11 @@ function Damping_MutiDegreeOfFreedom(blade, EO,SetTag)
         writetable(T, result_filename_excel, 'Sheet', 1, 'Range', ...
             ['A' num2str(start_row)]);       
 
-        %% save graph
+        % save graph
         graph_filename = fullfile('Graph', ...
             sprintf('EO%d_MDOF_blade%d_%s.png', EO, blade_idx,SetTag));              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         saveas(fig, graph_filename);    
     end
-    disp(['Data saved to ', result_filename_excel]);
+    % close all
     fprintf('[****damping:muti degree of freedom approximation finished.****]\n');
 end

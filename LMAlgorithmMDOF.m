@@ -19,6 +19,8 @@ function params_fitted = LMAlgorithmMDOF(freq,magn,peaks_idx,weights_idx)
         % Ensure edge weights are not less than edge_weight
         gaussian_weights(gaussian_weights < edge_weight) = edge_weight;
         weights(start_idx:end_idx) = gaussian_weights;
+        % 常数
+        % weights(start_idx:end_idx) = edge_weight;
     end
 
     %% set initial value for params (W_m: exci_freq; D_m: damping ratio; r_re; r_im;)
@@ -39,7 +41,7 @@ function params_fitted = LMAlgorithmMDOF(freq,magn,peaks_idx,weights_idx)
 
     % set lsqnonlin use levenberg-marquardt algorithm
     options = optimoptions('lsqnonlin', 'Algorithm', 'levenberg-marquardt', 'Display', 'off', ...
-        'MaxIterations', 1000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
+        'MaxIterations', 10000,'FunctionTolerance', 1e-6, 'StepTolerance', 1e-6);
     residual = @(P) weights .* ( abs(ModelMDOF(P,freq)) - magn ).^2;
     params_fitted = lsqnonlin(residual, params_initial, lb, ub, options);   
 end
