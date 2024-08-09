@@ -91,7 +91,13 @@ function Research_FindPeakAutomatic(blade, EO)
     %}
     fig = figure('units', 'normalized', 'outerposition', [0 0 0.7 0.7]);
     title(sprintf('EO%d', EO));
-    xlim([13680 13880]);
+    if EO == 24
+        xlim([13680,13880]);
+    elseif EO == 8
+        xlim([3770,3890]);
+    elseif EO == 20
+        xlim([9420,9730]);
+    end
     xlabel('Frequency ');
     ylabel('Amplitude ');
     yticks([]);

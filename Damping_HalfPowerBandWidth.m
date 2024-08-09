@@ -1,8 +1,21 @@
-function Damping_HalfPowerBandWidth(blade,EO)
+function Damping_HalfPowerBandWidth(blade,EO,Tag)
     fprintf('[**********damping:half power bandwidth method starts.**********]\n');
-    
-    %% init params
+      
+    %% Initialize parameters
     n_blades = length(blade);
+    if EO == 24
+        x_left = 13680;
+        x_right = 13880;
+    elseif EO == 20
+         x_left = 9420;
+        x_right = 9730;
+    elseif EO == 8
+         x_left = 3770;
+        x_right = 3890;
+    end
+
+    %% interpolation to the same distance
+    blade = Interpolate(blade);
 
     %% get peaks_idx    
     peaks_idx_all = FindPeakAutomatic(blade);
@@ -17,22 +30,29 @@ function Damping_HalfPowerBandWidth(blade,EO)
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
 
-        %% Create figure and set it up
-        fig = figure('units', 'normalized', 'outerposition', [0 0 1 1]);
-        sgtitle(sprintf('EO%d, blade%d', EO, blade_idx));
-        set(gcf, 'WindowStyle', 'docked');
-
         
         %% reduce noise and downsample
         magn = ReduceNoise(magn, freq, err);
         err = smoothdata(err, 'movmean', 200);
 
-        %% subplot: Magnitude
-        plot(freq, magn, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Magnitude');  
+        %% Normalize
+        normalized_factor = max(magn)+10;
+        magn = magn / normalized_factor;
+        err = err / normalized_factor;
+
+
+        %% Create figure and set it up
+        fig = figure('Units', 'pixels', 'Position', [100, 100, 1200, 400]);
+        sgtitle(sprintf('EO%d %s blade%d', EO,Tag,blade_idx));
+        set(fig, 'WindowStyle', 'normal');
+        plot(freq, magn, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', ...
+            'Amplitude');  
         hold on;
         plot(freq, err, 'o', 'Color', [1.0, 0.8, 0.8], 'DisplayName', 'Error');  
-        xlabel('Frequency');
-        ylabel('Magnitude');
+        xlim([x_left,x_right]);
+        ylim([0,1]);
+        xlabel('Frequency(Hz)');
+        ylabel('Normalized Amplitude');
 
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
@@ -85,4 +105,5 @@ function Damping_HalfPowerBandWidth(blade,EO)
         saveas(fig, graph_filename);    
     end        
     fprintf('[**********damping:half power bandwidth finished.**********]\n');
+    close all;
 end

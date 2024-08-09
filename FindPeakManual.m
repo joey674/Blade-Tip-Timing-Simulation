@@ -3,14 +3,14 @@ function [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx)
     hold on;
 
     %{
-        绘制已有的峰值
+        plot exist peaks
     %} 
     for i = 1:length(peaks_idx)
         plot(freq(peaks_idx(i)), magn(peaks_idx(i)), 'bo', 'DisplayName', ['Peak idx ' num2str(peaks_idx(i))]);
     end
     
     %{
-        手动新加峰值
+        add peaks manually
     %} 
     while true
         [freq_get, ~] = ginput(1); 

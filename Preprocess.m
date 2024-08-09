@@ -4,7 +4,7 @@
 % rearrange along with rpm RPM so that the frequency is accending;
 
 
-function blade = Damping_PreProcess(EO,data,n_blades)
+function blade = Preprocess(EO,data,n_blades)
     blade = cell(1,length(EO));
     for i = 1:length(EO)
         Freq = data.mean_RPM * EO(i) / 60;

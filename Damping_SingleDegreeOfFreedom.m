@@ -1,9 +1,25 @@
-function Damping_SingleDegreeOfFreedom(blade,EO)
+function Damping_SingleDegreeOfFreedom(blade,EO,Tag)
     fprintf('[**********damping:SDOF method starts.**********]\n');
     
-    %% init params
+    %% Initialize parameters
     n_blades = length(blade);
     quality_factor_vec = [];
+    if EO == 24
+        x_left = 13680;
+        x_right = 13880;
+    elseif EO == 20
+         x_left = 9420;
+        x_right = 9730;
+    elseif EO == 8
+         x_left = 3770;
+        x_right = 3890;
+    end
+
+    %% interpolation to the same distance
+    %{
+        interpolate the data to the same freq density
+    %}
+    blade = Interpolate(blade);
 
     %% get peaks_idx    
     peaks_idx_all = FindPeakAutomatic(blade);
@@ -18,25 +34,31 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
         phase = [blade_data.phase];
         err  = [blade_data.err]; 
 
-        %% Create figure and set it up
-        fig = figure('units', 'normalized', 'outerposition', [0 0 1 1]);
-        sgtitle(sprintf('EO%d, blade%d', EO, blade_idx));
-        set(gcf, 'WindowStyle', 'docked');
-
-        %% reduce noise and downsample
+        %% Reduce noise and downsample
         magn = ReduceNoise(magn, freq, err);
         err = smoothdata(err, 'movmean', 200);
+        phase = smoothdata(phase, 'movmean', 200);
+        
+        %% Normalize
+        normalized_factor = max(magn)+10;
+        magn = magn / normalized_factor;
+        err = err / normalized_factor;
 
-        %% subplot: Magnitude
-        plot(freq, magn, 'o', 'Color', [0.8, 0.9, 1.0]);  
+        %% Create figure and set it up
+        fig = figure('Units', 'pixels', 'Position', [100, 100, 1200, 400]);
+        sgtitle(sprintf('EO%d %s blade%d', EO, Tag, blade_idx));
+        set(fig, 'WindowStyle', 'normal');
+        plot(freq, magn, 'o', 'Color', [0.8, 0.9, 1.0], 'DisplayName', 'Amplitude');  
         hold on;
-        plot(freq, err, 'o', 'Color', [1.0, 0.8, 0.8]);  
-        xlabel('Frequency');
-        ylabel('Magnitude');
+        plot(freq, err, 'o', 'Color', [1.0, 0.8, 0.8], 'DisplayName', 'Error');  
+        xlim([x_left,x_right]);
+        ylim([0, 1]);
+        xlabel('Frequency (Hz)');
+        ylabel('Normalized Amplitude');
 
         %% get peaks_idx              
         peaks_idx = [peaks_idx_all(blade_idx).peaks.idx];
-        [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx);%%%%%%%%%%%%%%%%%%%%% 手动打开的开关
+        [fig, peaks_idx] = FindPeakManual(fig, freq, magn, peaks_idx);
         peaks_idx = sort(peaks_idx);
         if isempty(peaks_idx) 
             disp('ERROR: can not find peaks for this blade, will skip this blade.');
@@ -67,14 +89,30 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
             excitate_freq(j) = params_m(1);
             damping_ratio(j) = params_m(2);
 
-            %% quality factor
-            quality_factor = 0;
-            quality_factor = abs(abs(ModelSDOF(params_m, freq_cut))-magn_cut);
-            quality_factor = sum(quality_factor) /length(magn_cut);
-            quality_factor = quality_factor / max(magn_cut);
-            quality_factor_vec = [quality_factor_vec,quality_factor];
+            %% Quality factor
+            quality_factor = abs(abs(ModelSDOF(params_m, freq_cut)) - magn_cut);
+            quality_factor = sum(quality_factor) / length(magn_cut);
+            quality_factor = 1-quality_factor / max(magn_cut);
+            quality_factor_vec = [quality_factor_vec, quality_factor];
+            fprintf("quality factor: %.2f%%\n", quality_factor * 100);
+          
         end
+        x_limits = xlim;
+        y_limits = ylim;
 
+        x_pos = x_limits(2) - 0.05 * diff(x_limits);
+        y_pos = y_limits(2) - 0.05 * diff(y_limits);
+        
+        quality_factors_str = sprintf('Quality Factors: %s', ...
+        strjoin(arrayfun(@(i, qf) sprintf('QF %d: %.2f%%', i, qf * 100), ...
+        1:length(quality_factor_vec), quality_factor_vec, 'UniformOutput', false), '; '));
+        
+        % Add the concatenated text to the plot
+        text(x_pos, y_pos, quality_factors_str, ...
+            'FontSize', 12, 'Color', 'black', 'HorizontalAlignment', 'right', ...
+            'VerticalAlignment', 'top', 'BackgroundColor', 'white', 'EdgeColor', 'black');
+        quality_factor_vec = [];
+      
         %% save to file 
         damping_ratios{blade_idx} = damping_ratio';
         excitate_freqs{blade_idx} = freq(peaks_idx)';
@@ -94,5 +132,6 @@ function Damping_SingleDegreeOfFreedom(blade,EO)
         graph_filename = fullfile('Graph', sprintf('EO%d_SDOF_blade%d.png', EO, blade_idx));
         saveas(fig, graph_filename);    
     end        
+    close all
     fprintf('[**********damping:SDOF Method finished.**********]\n');
 end

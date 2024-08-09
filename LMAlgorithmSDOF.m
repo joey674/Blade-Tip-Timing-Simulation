@@ -1,7 +1,7 @@
 function params_fitted = LMAlgorithmSDOF(freq,magn,peaks_idx,weights_idx) 
     %% weights
     weights = ones(size(freq));
-    peak_weight = 150;
+    peak_weight = 30;
     edge_weight = 10;
     for i = 1:size(weights_idx, 1)
         peak_idx = peaks_idx(i);

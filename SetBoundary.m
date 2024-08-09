@@ -1,18 +1,6 @@
 % MDOF_SetBoundary get the data info and find best freq range, which fit
 % the model best and ignore the rest of the data.
-
-% Input variables:
-%   - freq: 
-%   - magn: 
-%   - err: 
-%   - peaks_idx: 
-
-% Notice:
-%   - all vectors(freq,magn) will need to be long enough to have
-%   boundary_idx in both direction
-
-%   - all vector_idx(peaks_idx,weights_idx) can over the boundary(if is
-%   overflow, will be cut to boundary)
+% the precess is like Weight.
 
 
 function [freq,magn,weights_idx,peaks_idx] = SetBoundary(freq,magn,peaks_idx,weights_idx,boundary_idx)
